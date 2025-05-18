@@ -1,0 +1,9 @@
+streamlit
+# openai
+ollama
+pypdf
+python-dotenv
+PyPDF2
+python-docx
+fpdf
+streamlit-firebase-auth-ui
