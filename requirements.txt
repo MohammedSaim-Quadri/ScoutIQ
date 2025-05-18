@@ -6,4 +6,4 @@ python-dotenv
 PyPDF2
 python-docx
 fpdf
-streamlit-firebase-auth-ui
+firebase-admin

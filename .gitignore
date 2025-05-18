@@ -1,2 +1,65 @@
-*/__pycache__
-/venv
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.eggs/
+dist/
+build/
+sdist/
+*.egg-info/
+*.deb
+*.rpm
+*.tar.gz
+*.whl
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+*.log
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+*.xml
+objects.inv
+doctrees/
+
+# SCM metadata
+.git
+.svn
+.hg
+_darcs
+.bzr
+*.swp
+
+# IDEs and editors
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.vscode/
+*.tmproj
+*.bak
+*.asv
+*.iml
+*.ipnb_checkpoints
+
+# OS or system files
+.DS_Store
+Thumbs.db
+
+# MyPy and other static analysis
+.mypy_cache/
+
+/.streamlit
