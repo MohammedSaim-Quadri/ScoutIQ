@@ -73,14 +73,14 @@ def sign_in(email:str, password:str) -> None:
         user_info = get_account_info(id_token)["users"][0]
 
         # If email is not verified, send verification email and do not sign in
-        if not user_info["emailVerified"]:
-            send_email_verification(id_token)
-            st.session_state.auth_warning = 'Check your email to verify your account'
+        # if not user_info["emailVerified"]:
+        #     send_email_verification(id_token)
+        #     st.session_state.auth_warning = 'Check your email to verify your account'
 
         # Save user info to session state and rerun
-        else:
-            st.session_state.user_info = user_info
-            st.experimental_rerun()
+        #else:
+        st.session_state.user_info = user_info
+        st.experimental_rerun()
 
     except requests.exceptions.HTTPError as error:
         error_message = json.loads(error.args[1])['error']['message']
@@ -100,8 +100,12 @@ def create_account(email:str, password:str) -> None:
         id_token = create_user_with_email_and_password(email,password)['idToken']
 
         # Create account and send email verification
-        send_email_verification(id_token)
-        st.session_state.auth_success = 'Check your inbox to verify your email'
+        # send_email_verification(id_token)
+        # st.session_state.auth_success = 'Check your inbox to verify your email'
+        user_info = get_account_info(id_token)["users"][0]
+        st.session_state.user_info = user_info
+        st.session_state.auth_success = "✅ Account created and signed in!"
+        st.experimental_rerun()
     
     except requests.exceptions.HTTPError as error:
         error_message = json.loads(error.args[1])['error']['message']
