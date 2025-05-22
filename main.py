@@ -25,7 +25,7 @@ def main():
         elif 'auth_warning' in st.session_state:
             st.warning(st.session_state.auth_warning)
             del st.session_state.auth_warning
-        st.stop()
+        return
 
     run_ui()
 

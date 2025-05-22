@@ -14,6 +14,16 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+def is_pro_user(email):
+    try:
+        doc_ref = firestore.client().collection("pro_users").document(email.lower())
+        doc = doc_ref.get()
+        return doc.exists and doc.to_dict().get("pro",False)
+    except Exception as e:
+        st.warning(f"Error checking pro status.")
+        return False
+    
+
 def run_ui():
 
     if 'user_info' not in st.session_state:
@@ -21,6 +31,7 @@ def run_ui():
         st.stop()
 
     user_email = st.session_state.user_info['email']
+    is_pro = is_pro_user(user_email)
 
     key = f"gen_count_{user_email}"
     date_key = f"gen_date_{user_email}"
@@ -33,8 +44,11 @@ def run_ui():
 
     st.set_page_config(page_title="AI Interview Q Generator", layout="centered")
     st.title("🎯 AI-Powered Interview Question Generator")
-    remaining = 3 - st.session_state.get(key, 0)
-    st.info(f"🧮 You have {remaining} free generations left today.")
+    if is_pro:
+        st.success("💎 You are a Pro user — unlimited generations unlocked.")
+    else:
+        remaining = 3 - st.session_state.get(key, 0)
+        st.info(f"🧮 You have {remaining} free generations left today.")
 
     # JD Input
     jd_input = st.text_area("📄 Paste Job Description", height=200)
@@ -58,8 +72,9 @@ def run_ui():
         resume_text = st.text_area("Or Paste Resume Text below", height=200)
 
     # Generate Button
-    if st.session_state[key] >= 3:
-        st.error("🚫 Daily generation limit reached (3 per day). Come back tomorrow!")
+    if not is_pro and st.session_state.get(key,0) >= 3:
+        st.error("🚫 You’ve hit your free tier limit of 3 generations per day.")
+        st.info("💎 Upgrade to Pro for unlimited access. Contact us at support@example.com.")
         return
 
     if st.button("🚀 Generate Questions"):
@@ -95,6 +110,7 @@ def run_ui():
             log_entry = {
                 "email": user_email,
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "pro": is_pro,
                 "technical_qs": len(results['technical']),
                 "behavioral_qs": len(results['behavioral']),
                 "followup_qs": len(results['followup']),

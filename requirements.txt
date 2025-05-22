@@ -7,3 +7,5 @@ PyPDF2
 python-docx
 fpdf
 firebase-admin
+flask
+gunicorn
