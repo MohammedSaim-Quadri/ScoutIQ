@@ -6,12 +6,9 @@ import json
 
 app = Flask(__name__)
 
-cred_dict = json.loads(st.secrets["FIREBASE_CREDS"])
-cred = credentials.Certificate(cred_dict)
-
 if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase-service-key.json")
     firebase_admin.initialize_app(cred)
-
 db = firestore.client()
 
 @app.route("gumroad-webhook", methods=["POST"])
