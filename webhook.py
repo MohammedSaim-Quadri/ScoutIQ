@@ -11,7 +11,7 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-@app.route("gumroad-webhook", methods=["POST"])
+@app.route("/gumroad-webhook", methods=["POST"])
 def gumroad_webhook():
     data = request.form.to_dict()
 
