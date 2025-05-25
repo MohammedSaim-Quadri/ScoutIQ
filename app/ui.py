@@ -14,6 +14,24 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+def log_usage_to_firestore(email):
+    try:
+        doc_ref = db.collection("usage_logs").document(email.lower())
+        doc = doc_ref.get()
+        if doc.exists:
+            doc_ref.update({
+                "total_generations":firestore.Increment(1),
+                "last_used_at":firestore.SERVER_TIMESTAMP
+            })
+        else:
+            doc_ref.set({
+                "total_generations": 1,
+                "last_used_at": firestore.SERVER_TIMESTAMP
+            })
+    except Exception as e:
+        print(f"❌ Firestore logging error for {email}: {e}")
+
+
 def is_pro_user(email):
     try:
         doc_ref = firestore.client().collection("pro_users").document(email.lower())
@@ -106,6 +124,7 @@ def run_ui():
                 mime="application/pdf"
             )
             st.session_state[key] += 1
+            log_usage_to_firestore(user_email)
 
             log_entry = {
                 "email": user_email,
