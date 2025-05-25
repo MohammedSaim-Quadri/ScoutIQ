@@ -11,6 +11,8 @@ app = Flask(__name__)
 
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+GUMROAD_SECRET = os.environ.get("GUMROAD_SECRET")
+
 
 def send_confirmation_email(email, tier):
     msg = EmailMessage()
@@ -45,6 +47,10 @@ db = firestore.client()
 
 @app.route("/gumroad-webhook", methods=["POST"])
 def gumroad_webhook():
+    if request.args.get("secret") != GUMROAD_SECRET:
+        print("Invalid webhook")
+        return jsonify({"error": "Unauthorized"}), 401
+    
     data = request.form.to_dict()
     print("🚨 Received webhook:", data)
 
