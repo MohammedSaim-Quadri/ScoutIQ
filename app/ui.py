@@ -90,17 +90,13 @@ def run_ui():
         resume_text = st.text_area("Or Paste Resume Text below", height=200)
 
     # Generate Button
-    if not is_pro :
-        remaining = 3 - st.session_state.get(key, 0)
-        st.info(f"🧮 You have {remaining} free generations left today.")
+    if not is_pro and st.session_state.get(key, 0) >= 3:
+        st.error("🚫 You’ve hit your free tier limit of 3 generations today.")
         st.markdown(
-            "🚀 [Upgrade to Pro for unlimited use →](https://saimquadri.gumroad.com/)",
-            unsafe_allow_html=True
+            "**💎 Upgrade to Pro for unlimited access →** "
+            "[View Pricing](pages/Pricing.py)", unsafe_allow_html=True
         )
-        if remaining <=0:
-            st.error("🚫 You’ve hit your free tier limit of 3 generations per day.")
-            st.info("💎 Upgrade to Pro for unlimited access. Contact us at support@example.com.")
-            return
+        st.stop()
 
     if st.button("🚀 Generate Questions"):
         if jd_input.strip() == "" or resume_text.strip() == "":
