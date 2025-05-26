@@ -1,10 +1,14 @@
 FROM ollama/ollama:latest
 
-# Install curl
-RUN apt-get update && apt-get install -y curl
+# Install curl and nginx
+RUN apt-get update && apt-get install -y curl nginx
 
-# Pull llama3 model on container startup
+# Copy nginx config
+COPY default.conf /etc/nginx/sites-enabled/default
+
+# Copy startup script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+EXPOSE 80
 ENTRYPOINT ["/entrypoint.sh"]
