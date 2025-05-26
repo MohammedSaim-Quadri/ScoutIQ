@@ -5,7 +5,7 @@ import json
 from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf
 from io import BytesIO
 from datetime import datetime
-
+st.set_page_config(page_title="AI Interview Q Generator", layout="centered")
 cred_dict = json.loads(st.secrets["FIREBASE_CREDS"])
 cred = credentials.Certificate(cred_dict)
 
@@ -60,7 +60,7 @@ def run_ui():
         st.session_state[date_key] = today
         st.session_state[key] = 0
 
-    st.set_page_config(page_title="AI Interview Q Generator", layout="centered")
+    
     st.title("🎯 AI-Powered Interview Question Generator")
     if is_pro:
         st.success("💎 You are a Pro user — unlimited generations unlocked.")
