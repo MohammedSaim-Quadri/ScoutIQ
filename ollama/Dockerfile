@@ -1,28 +1,10 @@
-#Stage 1: Build the binary
-FROM golang:alpine AS builder
+FROM ollama/ollama:0.1.26
 
-RUN apk add --no-cache git build-base cmake bash
-WORKDIR /app
+# Update package lists and upgrade packages to fix vulnerabilities
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
-#Clone the Ollama source
-RUN git clone https://github.com/jmorgance/ollama.git .
-RUN go generate ./... && go build -ldflags '-linkmode external -extldflags "-static"' -o .
-
-#Stage 2: Final image
-FROM alpine
-
-ENV OLLAMA_HOST "0.0.0.0"
-
-RUN apk add --no-cache libstdc++ curl
-
+# Pull llama3 model on container startup
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-ARG USER=ollama
-ARG GROUP=ollama
-RUN addgroup $GROUP && adduser -D -G $GROUP $USER
-
-COPY --from=builder /app/ollama /bin/ollama
-
-USER $USER:$GROUP
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT ["/entrypoint.sh"]
