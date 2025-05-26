@@ -1,22 +1,29 @@
 import re
-import ollama
+import os
+import requests
 import PyPDF2
 import docx
 from fpdf import FPDF
 from app.prompts import question_prompt
+
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 def run_prompt_chain(jd_text, resume_text):
     prompt = question_prompt(jd_text, resume_text)
     print("📨 Sending prompt to Mistral...")
 
     try:
-        response = ollama.chat(
-            model="llama3.2:1b",  # or any model you've pulled locally
-            messages=[{"role": "user", "content": prompt}]
+        response = requests.post(
+            f"{OLLAMA_URL}/api/chat",
+            json={
+                "model":"llama3.2:1b",
+                "messages": [{"role": "user", "content": prompt}]
+            }
         )
         print("✅ Got response from Mistral!")
 
-        answer = response['message']['content']
+        data = response.json()
+        answer = data.get("message", {}).get("content", "")
         print("🧠 Raw response:\n", answer)
 
         # Basic parsing based on section headers in the LLM output
