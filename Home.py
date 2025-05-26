@@ -29,3 +29,4 @@ Click below to log in and launch the app.
 """)
 
 st.page_link("pages/App.py", label="Launch ScoutIQ App", icon="💻")
+st.page_link("pages/Pricing.py", label="💰 Pricing", icon="💳")
