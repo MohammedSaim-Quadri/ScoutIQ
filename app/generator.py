@@ -5,8 +5,8 @@ import PyPDF2
 import docx
 from fpdf import FPDF
 from app.prompts import question_prompt
-
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+import streamlit as st
+OLLAMA_URL = st.secrets.get("OLLAMA_URL", "http://localhost:11434")
 
 def run_prompt_chain(jd_text, resume_text):
     prompt = question_prompt(jd_text, resume_text)
@@ -16,7 +16,7 @@ def run_prompt_chain(jd_text, resume_text):
         response = requests.post(
             f"{OLLAMA_URL}/api/chat",
             json={
-                "model":"llama3.2:1b",
+                "model":st.secrets.get("OLLAMA_MODEL", "llama3.2:1b"),
                 "messages": [{"role": "user", "content": prompt}]
             }
         )
