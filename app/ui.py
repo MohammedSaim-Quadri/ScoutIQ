@@ -6,11 +6,20 @@ import json
 from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf
 from io import BytesIO
 from datetime import datetime
-cred_dict = st.secrets["FIREBASE_CREDS"]
-cred = credentials.Certificate(cred_dict)
 
-if not firebase_admin._apps:
-    firebase_admin.initialize_app(cred)
+try:
+    cred_dict = dict(st.secrets["FIREBASE_CREDS"])
+    # Remove the FIREBASE_WEB_API_KEY from the credentials dict if it exists
+    if "FIREBASE_WEB_API_KEY" in cred_dict:
+        del cred_dict["FIREBASE_WEB_API_KEY"]
+    
+    cred = credentials.Certificate(cred_dict)
+    
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+except Exception as e:
+    st.error(f"Firebase initialization error: {e}")
+    st.stop()
 
 db = firestore.client()
 
