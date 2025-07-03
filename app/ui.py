@@ -6,7 +6,7 @@ import json
 from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf
 from io import BytesIO
 from datetime import datetime
-cred_dict = json.loads(st.secrets["FIREBASE_CREDS"])
+cred_dict = st.secrets["FIREBASE_CREDS"]
 cred = credentials.Certificate(cred_dict)
 
 if not firebase_admin._apps:
