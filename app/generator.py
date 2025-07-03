@@ -7,7 +7,7 @@ from fpdf import FPDF
 from llm_backend.prompts import question_prompt
 import streamlit as st
 
-BACKEND_URL = "http://<ec2-public-ip>:8000/generate" 
+BACKEND_URL = "http://51.21.134.172:8000/generate" 
 
 def run_prompt_chain(jd_text, resume_text):
     prompt = question_prompt(jd_text, resume_text)
