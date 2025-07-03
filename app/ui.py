@@ -1,4 +1,5 @@
 import firebase_admin
+from app.usage_tracker import get_today_usage, increment_today_usage
 from firebase_admin import credentials, firestore
 import streamlit as st
 import json
@@ -50,21 +51,14 @@ def run_ui():
     user_email = st.session_state.user_info['email']
     is_pro = is_pro_user(user_email)
 
-    key = f"gen_count_{user_email}"
-    date_key = f"gen_date_{user_email}"
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    if st.session_state.get(date_key) != today:
-        st.session_state[date_key] = today
-        st.session_state[key] = 0
+    today_usage = get_today_usage(user_email)
 
     
     st.title("🎯 AI-Powered Interview Question Generator")
     if is_pro:
         st.success("💎 You are a Pro user — unlimited generations unlocked.")
     else:
-        remaining = 3 - st.session_state.get(key, 0)
+        remaining = 3 - today_usage
         st.info(f"🧮 You have {remaining} free generations left today.")
 
     # JD Input
@@ -89,7 +83,7 @@ def run_ui():
         resume_text = st.text_area("Or Paste Resume Text below", height=200)
 
     # Generate Button
-    if not is_pro and st.session_state.get(key, 0) >= 3:
+    if not is_pro and today_usage >= 3:
         st.error("🚫 You’ve hit your free tier limit of 3 generations today.")
         st.markdown(
             "**💎 Upgrade to Pro for unlimited access →** "
@@ -125,7 +119,7 @@ def run_ui():
                 file_name="interview_questions.pdf",
                 mime="application/pdf"
             )
-            st.session_state[key] += 1
+            increment_today_usage(user_email)
             log_usage_to_firestore(user_email)
 
             log_entry = {
