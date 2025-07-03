@@ -10,15 +10,16 @@ import streamlit as st
 BACKEND_URL = "http://51.21.134.172:8000/generate" 
 
 def run_prompt_chain(jd_text, resume_text):
-    prompt = question_prompt(jd_text, resume_text)
+    #prompt = question_prompt(jd_text, resume_text)
     print("📨 Sending prompt to Llama...")
 
     try:
         response = requests.post(
             BACKEND_URL,
-            json={"prompt": prompt},
+            json={"jd": jd_text, "resume": resume_text},
             timeout=60
         )
+
         response.raise_for_status()
         data = response.json()
 
