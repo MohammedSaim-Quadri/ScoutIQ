@@ -4,7 +4,6 @@ import requests
 import PyPDF2
 import docx
 from fpdf import FPDF
-from llm_backend.prompts import question_prompt
 import streamlit as st
 
 BACKEND_URL = "http://51.21.134.172:8000/generate" 
