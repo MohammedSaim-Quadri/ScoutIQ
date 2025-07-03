@@ -22,11 +22,13 @@ def run_prompt_chain(jd_text, resume_text):
 
         response.raise_for_status()
         data = response.json()
+        print("🧠 Raw backend response:\n", data)
+        result = data.get("result", {})
 
         return {
-            "technical": data.get("technical_questions", []),
-            "behavioral": data.get("behavioral_questions", []),
-            "followup": data.get("red_flag_questions", [])
+            "technical": result.get("technical", []),
+            "behavioral": result.get("behavioral", []),
+            "followup": result.get("followup", [])
         }
 
     except requests.exceptions.RequestException as e:
