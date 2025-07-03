@@ -9,9 +9,6 @@ from datetime import datetime
 
 try:
     cred_dict = dict(st.secrets["FIREBASE_CREDS"])
-    # Remove the FIREBASE_WEB_API_KEY from the credentials dict if it exists
-    if "FIREBASE_WEB_API_KEY" in cred_dict:
-        del cred_dict["FIREBASE_WEB_API_KEY"]
     
     cred = credentials.Certificate(cred_dict)
     
