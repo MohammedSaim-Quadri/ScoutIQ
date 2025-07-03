@@ -1,11 +1,11 @@
 streamlit
-# openai
-ollama
 pypdf
 python-dotenv
 PyPDF2
 python-docx
 fpdf
 firebase-admin
-flask
+fastapi
+uvicorn
+requests
 gunicorn

@@ -4,64 +4,35 @@ import requests
 import PyPDF2
 import docx
 from fpdf import FPDF
-from app.prompts import question_prompt
+from llm_backend.prompts import question_prompt
 import streamlit as st
-OLLAMA_URL = st.secrets.get("OLLAMA_URL", "http://localhost:11434")
+
+BACKEND_URL = "http://<ec2-public-ip>:8000/generate" 
 
 def run_prompt_chain(jd_text, resume_text):
     prompt = question_prompt(jd_text, resume_text)
-    print("📨 Sending prompt to Mistral...")
+    print("📨 Sending prompt to Llama...")
 
     try:
         response = requests.post(
-            f"{OLLAMA_URL}/api/chat",
-            json={
-                "model":st.secrets.get("OLLAMA_MODEL", "llama3.2:1b"),
-                "messages": [{"role": "user", "content": prompt}]
-            }
+            BACKEND_URL,
+            json={"prompt": prompt},
+            timeout=60
         )
-        print("✅ Got response from Mistral!")
-
+        response.raise_for_status()
         data = response.json()
-        answer = data.get("message", {}).get("content", "")
-        print("🧠 Raw response:\n", answer)
-
-        # Basic parsing based on section headers in the LLM output
-        technical, behavioral, red_flags = [], [], []
-        current_section = None
-
-        for line in answer.splitlines():
-            line = line.strip()
-
-            if "technical" in line.lower() and "question" in line.lower():
-                current_section = "technical"
-                continue
-            elif "behavioral" in line.lower() and "question" in line.lower():
-                current_section = "behavioral"
-                continue
-            elif ("red flag" in line.lower() or "follow-up" in line.lower()) and "question" in line.lower():
-                current_section = "red"
-                continue
-            elif line and current_section:
-                if re.match(r"^(\d+[\.\)]|[-•])\s*", line):
-                    clean_line = re.sub(r"^(\d+[\.\)]|[-•])\s*", "", line)
-                    if current_section == "technical":
-                        technical.append(clean_line)
-                    elif current_section == "behavioral":
-                        behavioral.append(clean_line)
-                    elif current_section == "red":
-                        red_flags.append(clean_line)
 
         return {
-            "technical": technical,
-            "behavioral": behavioral,
-            "followup": red_flags
+            "technical": data.get("technical_questions", []),
+            "behavioral": data.get("behavioral_questions", []),
+            "followup": data.get("red_flag_questions", [])
         }
 
-    except Exception as e:
-        print(f"LLM Error: {e}")
+    except requests.exceptions.RequestException as e:
+        st.error("[LLM Backend Error] Could not generate questions.")
+        st.exception(e)
         return {
-            "technical": ["[LLM Error Generating Questions]"],
+            "technical": [],
             "behavioral": [],
             "followup": []
         }

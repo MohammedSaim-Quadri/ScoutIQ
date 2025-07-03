@@ -1,4 +1,4 @@
-def question_prompt(jd_text, resume_text):
+def question_prompt(jd_text:str, resume_text:str) -> str:
     return f"""
 You are an expert technical recruiter.
 
@@ -20,4 +20,5 @@ Generate:
   - Red Flag / Follow-Up Questions:
 - Each question should start with a dash (-) or bullet (•), one per line.
 - Do not include explanations or guidance — just the questions in the correct sections.
+- ⚠️ Do not repeat any section. Stop after generating these 10 questions.
 """
