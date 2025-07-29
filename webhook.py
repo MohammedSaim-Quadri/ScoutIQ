@@ -1,18 +1,17 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Request, HTTPException, Form
+from fastapi.responses import JSONResponse
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
-import json
 import smtplib
 from email.message import EmailMessage
+from typing import Annotated
 
-app = Flask(__name__)
-
+app = FastAPI()
 
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 GUMROAD_SECRET = os.environ.get("GUMROAD_SECRET")
-
 
 def send_confirmation_email(email, tier):
     msg = EmailMessage()
@@ -45,17 +44,24 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-@app.route("/gumroad-webhook", methods=["POST"])
-def gumroad_webhook():
-    if request.args.get("secret") != GUMROAD_SECRET:
+@app.post("/gumroad-webhook")
+async def gumroad_webhook(
+    request: Request,
+    email: Annotated[str, Form()] = None,
+    product_name: Annotated[str, Form()] = ""
+):
+    # Verify secret from query parameters
+    secret = request.query_params.get("secret")
+    if secret != GUMROAD_SECRET:
         print("Invalid webhook")
-        return jsonify({"error": "Unauthorized"}), 401
+        raise HTTPException(status_code=401, detail="Unauthorized")
     
-    data = request.form.to_dict()
-    print("🚨 Received webhook:", data)
+    # Get form data
+    form_data = await request.form()
+    print("🚨 Received webhook:", dict(form_data))
 
-    email = data.get("email")
-    product_name = data.get("product_name", "").lower()
+    email = form_data.get("email")
+    product_name = form_data.get("product_name", "").lower()
     print(f"Parsed email: {email}, product: {product_name}")
 
     if email:
@@ -74,13 +80,15 @@ def gumroad_webhook():
             "source": "gumroad",
             "created_at": firestore.SERVER_TIMESTAMP
         })
-        send_confirmation_email(email,tier)
+        send_confirmation_email(email, tier)
 
-        return jsonify({"success": True, "message": "User upgraded"}), 200
+        return JSONResponse(
+            content={"success": True, "message": "User upgraded"}, 
+            status_code=200
+        )
     
-    return jsonify({"error":"Email not found"}), 400
-
-
+    raise HTTPException(status_code=400, detail="Email not found")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

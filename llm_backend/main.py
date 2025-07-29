@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from prompts import question_prompt
+from prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt
 import requests, os
 from dotenv import load_dotenv
 import re
@@ -35,6 +35,50 @@ def generate_questions(data: Input):
     except Exception as e:
         return {"error": str(e), "raw": response.text}
 
+@app.post("/insight-summary")
+def generate_insight(data: Input):
+    prompt = insight_summary_prompt(data.jd,data.resume)
+    headers = {
+        "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 512,
+        "temperature": 0.7,
+    }
+
+    response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
+
+    try:
+        text = response.json()['choices'][0]['message']['content']
+        return {"summary": text}
+    except Exception as e:
+        return {"error": str(e), "raw": response.text}
+
+
+@app.post("/skill-gap")
+def generate_skill_gap(data: Input):
+    prompt = build_skill_gap_prompt(data.jd, data.resume)
+    headers = {
+        "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 500,
+        "temperature": 0.7,
+    }
+
+    response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
+    try:
+        text = response.json()['choices'][0]['message']['content']
+        return {"skill_gaps": text.strip()}
+    except Exception as e:
+        return {"error": str(e), "raw": response.text}
 
 def clean_response(raw_output: str):
     # Normalize

@@ -3,7 +3,7 @@ from app.usage_tracker import get_today_usage, increment_today_usage
 from firebase_admin import credentials, firestore
 import streamlit as st
 import json
-from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf
+from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf, fetch_insight_summary, fetch_skill_gap_highlights
 from io import BytesIO
 from datetime import datetime
 
@@ -42,7 +42,10 @@ def is_pro_user(email):
     try:
         doc_ref = firestore.client().collection("pro_users").document(email.lower())
         doc = doc_ref.get()
-        return doc.exists and doc.to_dict().get("pro",False)
+        if doc.exists and doc.to_dict().get("pro", False):
+            return doc.to_dict().get("tier", "monthly")  # default to monthly if missing
+        else:
+            return "free"
     except Exception as e:
         st.warning(f"Error checking pro status.")
         return False
@@ -55,17 +58,22 @@ def run_ui():
         st.stop()
 
     user_email = st.session_state.user_info['email']
-    is_pro = is_pro_user(user_email)
+    user_tier = is_pro_user(user_email)
 
     today_usage = get_today_usage(user_email)
 
     
     st.title("🎯 AI-Powered Interview Question Generator")
-    if is_pro:
-        st.success("💎 You are a Pro user — unlimited generations unlocked.")
-    else:
+    if user_tier == "free":
         remaining = 3 - today_usage
         st.info(f"🧮 You have {remaining} free generations left today.")
+    elif user_tier == "monthly":
+        st.success("💎 Monthly Pro user — unlimited generations.")
+    elif user_tier == "yearly":
+        st.success("💎 Yearly Pro user — unlimited generations + early feature access.")
+    elif user_tier == "lifetime":
+        st.success("🔓 Lifetime user — all current & future features unlocked.")
+
 
     # JD Input
     jd_input = st.text_area("📄 Paste Job Description", height=200)
@@ -89,7 +97,7 @@ def run_ui():
         resume_text = st.text_area("Or Paste Resume Text below", height=200)
 
     # Generate Button
-    if not is_pro and today_usage >= 3:
+    if user_tier == "free" and today_usage >= 3:
         st.error("🚫 You’ve hit your free tier limit of 3 generations today.")
         st.markdown(
             "**💎 Upgrade to Pro for unlimited access →** "
@@ -117,6 +125,17 @@ def run_ui():
                 st.subheader("⚠️ Red Flag / Follow-up Questions")
                 for q in results['followup']:
                     st.markdown(f"{q}")
+
+            if user_tier in ["monthly", "yearly", "lifetime"]:
+                with st.spinner("Generating insight summary..."):
+                    summary = fetch_insight_summary(jd_input, resume_text, user_tier)
+                    st.subheader("Resume & JD Insight Summary")
+                    st.markdown(summary)
+                with st.spinner("Analyzing skill gaps..."):
+                    skill_gaps = fetch_skill_gap_highlights(jd_input, resume_text, user_tier)
+                    st.subheader("Skill Gap Highlights")
+                    st.markdown(skill_gaps)
+            
             # Download PDF
             pdf_bytes = generate_pdf(results['technical'], results['behavioral'], results['followup'])
             st.download_button(
@@ -131,11 +150,13 @@ def run_ui():
             log_entry = {
                 "email": user_email,
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "pro": is_pro,
+                "pro": user_tier,
                 "technical_qs": len(results['technical']),
                 "behavioral_qs": len(results['behavioral']),
                 "followup_qs": len(results['followup']),
-                "total_qs": len(results['technical']) + len(results['behavioral']) + len(results['followup'])
+                "total_qs": len(results['technical']) + len(results['behavioral']) + len(results['followup']),
+                "summary": summary,
+                "skill_gaps": skill_gaps,
             }
 
             db.collection("usage_logs").add(log_entry)

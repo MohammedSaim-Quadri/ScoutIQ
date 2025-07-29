@@ -39,6 +39,37 @@ def run_prompt_chain(jd_text, resume_text):
             "followup": []
         }
 
+def fetch_insight_summary(jd_text, resume_text, user_tier):
+    if user_tier not in ["monthly", "yearly", "lifetime"]:
+        return None
+
+    try:
+        response = requests.post(
+            "http://51.21.134.172:8000/insight-summary",
+            json={"jd": jd_text, "resume": resume_text},
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.json().get("summary", "⚠️ No summary returned.")
+    except requests.exceptions.RequestException as e:
+        return f"⚠️ Failed to fetch insight summary: {str(e)}"
+
+
+def fetch_skill_gap_highlights(jd_text, resume_text, user_tier):
+    if user_tier not in ["monthly", "yearly", "lifetime"]:
+        return None
+    try:
+        response = requests.post(
+            f"{BACKEND_URL.rsplit('/', 1)[0]}/skill-gap",
+            json={"jd": jd_text, "resume": resume_text},
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.json().get("skill_gaps", "No gaps found.")
+    except requests.exceptions.RequestException as e:
+        st.error("❌ Error fetching skill gap highlights.")
+        st.exception(e)
+        return "N/A"
 
 def extract_text_from_pdf(file) -> str:
     reader = PyPDF2.PdfReader(file)
