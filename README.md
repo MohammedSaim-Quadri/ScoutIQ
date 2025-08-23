@@ -52,29 +52,33 @@ Built with **Python, FastAPI, Streamlit, Firebase, and LLMs**, ScoutIQ is design
 ---
 
 ## 📂 Project Structure
-
+```
 scoutiq/
 ├── Home.py # Landing page (Streamlit)
+|
 ├── pages/ # Streamlit multi-page setup
 │ ├── App.py # Main recruiter app (interview generator)
 │ ├── Pricing.py # Pricing & plans
+|
 ├── app/ # Core app logic
 │ ├── generator.py # LLM request handling
 │ ├── ui.py # Streamlit UI logic
 │ ├── usage_tracker.py # Daily usage tracking
 │ └── auth/ # Firebase authentication
+|
 ├── llm_backend/ # FastAPI backend for LLM integration
 │ ├── main.py # API routes (/generate, /insight-summary, /skill-gap)
 │ └── prompts.py # Prompt templates
+|
 ├── webhook.py # Gumroad webhook for payment integration
 ├── requirements.txt # Python dependencies
 ├── render.yaml # Render.com deployment config
 └── README.md # Project documentation
-
+```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Clone the Repository
 ```bash
@@ -87,7 +91,7 @@ cd scoutiq
 pip install -r requirements.txt
 ```
 
-###Set Environment Variables
+### Set Environment Variables
 ```bash
 Create a .env file with:
 
@@ -105,12 +109,13 @@ Also add your firebase-service-key.json for Firebase Admin SDK.
 uvicorn llm_backend.main:app --reload --port 8000
 ```
 
-###Run the Frontend
+### Run the Frontend
 ```bash
 streamlit run Home.py
 ```
 
-##🧪 Example Usage
+---
+## Example Usage
 
 - Paste a Job Description.
 - Upload or paste a Candidate Resume.
@@ -119,12 +124,14 @@ streamlit run Home.py
 - (Pro users) View insight summaries & skill gap analysis.
 - Export results as a PDF.
 
-##💳 Pricing (via Gumroad)
+---
+## Pricing (via Gumroad)
 
 - Free: 3 generations/month.
 - Pro Monthly: $12/month → Subscribe
 - Pro Yearly: $120/year → Subscribe
 - Lifetime: $250 one-time → Buy Lifetime Access
+---
 
 ## Roadmap
 
@@ -137,12 +144,13 @@ streamlit run Home.py
 - [ ] Multi-language support  
 - [ ] Resume parsing & scoring engine  
 
-
+---
 🤝 Contributing
 
 Contributions are welcome! Please fork the repo and submit a pull request.
 If you have ideas, feature requests, or bug reports, open an issue.
 
+---
 📜 License
 
 This project is licensed under the MIT License – see the LICENSE
