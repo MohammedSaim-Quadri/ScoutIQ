@@ -6,6 +6,8 @@ import os
 import smtplib
 from email.message import EmailMessage
 from typing import Annotated
+from llm_backend.main import generate_questions, generate_insight, generate_skill_gap
+from llm_backend.main import Input
 
 app = FastAPI()
 
@@ -88,6 +90,20 @@ async def gumroad_webhook(
         )
     
     raise HTTPException(status_code=400, detail="Email not found")
+
+
+@app.post("/generate")
+def generate_questions_route(data: Input):
+    return generate_questions(data)
+
+@app.post("/insight-summary")
+def generate_insight_route(data: Input):
+    return generate_insight(data)
+
+@app.post("/skill-gap")
+def generate_skill_gap_route(data: Input):
+    return generate_skill_gap(data)
+
 
 if __name__ == "__main__":
     import uvicorn
