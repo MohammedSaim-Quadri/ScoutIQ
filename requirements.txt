@@ -10,3 +10,4 @@ uvicorn
 requests
 gunicorn
 pandas
+python-multipart

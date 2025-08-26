@@ -8,10 +8,17 @@ from io import BytesIO
 from datetime import datetime
 
 try:
-    cred_dict = dict(st.secrets["FIREBASE_CREDS"])
-    
+    firebase_creds = st.secrets["FIREBASE_CREDS"]
+
+    # Cloud → JSON string
+    if isinstance(firebase_creds, str):
+        cred_dict = json.loads(firebase_creds)
+    else:
+        # Local/EC2 → already dict-like
+        cred_dict = dict(firebase_creds)
+
     cred = credentials.Certificate(cred_dict)
-    
+
     if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
 except Exception as e:
