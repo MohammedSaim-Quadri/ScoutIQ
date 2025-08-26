@@ -6,7 +6,7 @@ import docx
 from fpdf import FPDF
 import streamlit as st
 
-BACKEND_URL = "http://51.21.134.172:8000/generate" 
+BACKEND_URL = "https://interview-scoutiq.onrender.com/generate" 
 
 def run_prompt_chain(jd_text, resume_text):
     #prompt = question_prompt(jd_text, resume_text)
@@ -45,7 +45,7 @@ def fetch_insight_summary(jd_text, resume_text, user_tier):
 
     try:
         response = requests.post(
-            "http://51.21.134.172:8000/insight-summary",
+            "https://interview-scoutiq.onrender.com/insight-summary",
             json={"jd": jd_text, "resume": resume_text},
             timeout=60
         )
