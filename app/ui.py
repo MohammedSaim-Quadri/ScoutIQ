@@ -112,6 +112,8 @@ def run_ui():
         )
         st.stop()
 
+    skill_gaps = None
+    summary = None
     if st.button("🚀 Generate Questions"):
         if jd_input.strip() == "" or resume_text.strip() == "":
             st.warning("Please provide both Job Description and Resume.")
