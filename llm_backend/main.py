@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt
+from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt
 import requests, os
 from dotenv import load_dotenv
 import re
