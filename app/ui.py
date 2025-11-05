@@ -7,22 +7,34 @@ from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_
 from io import BytesIO
 from datetime import datetime
 
+# try:
+#     firebase_creds = st.secrets["FIREBASE_CREDS"]
+
+#     # Cloud → JSON string
+#     if isinstance(firebase_creds, str):
+#         cred_dict = json.loads(firebase_creds)
+#     else:
+#         # Local/EC2 → already dict-like
+#         cred_dict = dict(firebase_creds)
+
+#     cred = credentials.Certificate(cred_dict)
+
+#     if not firebase_admin._apps:
+#         firebase_admin.initialize_app(cred)
+# except Exception as e:
+#     st.error(f"Firebase initialization error: {e}")
+#     st.stop()
+
 try:
-    firebase_creds = st.secrets["FIREBASE_CREDS"]
-
-    # Cloud → JSON string
-    if isinstance(firebase_creds, str):
-        cred_dict = json.loads(firebase_creds)
-    else:
-        # Local/EC2 → already dict-like
-        cred_dict = dict(firebase_creds)
-
-    cred = credentials.Certificate(cred_dict)
-
+    # Check if the app is already initialized
     if not firebase_admin._apps:
+        # Point to the service key file directly for local development
+        cred = credentials.Certificate("firebase-service-key.json")
         firebase_admin.initialize_app(cred)
 except Exception as e:
+    # Catch potential errors like file not found
     st.error(f"Firebase initialization error: {e}")
+    st.info("Make sure 'firebase-service-key.json' is in your project's root directory.")
     st.stop()
 
 db = firestore.client()

@@ -20,6 +20,11 @@ venv/
 env/
 ENV/
 *.log
+logs.txt
+
+# Secrets - DO NOT COMMIT THESE
+.env
+firebase-service-key.json
 
 # PyInstaller
 *.manifest
@@ -62,5 +67,5 @@ Thumbs.db
 # MyPy and other static analysis
 .mypy_cache/
 
+# Streamlit
 /.streamlit
-logs.txt

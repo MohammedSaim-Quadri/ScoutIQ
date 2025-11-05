@@ -1,12 +1,15 @@
 import re
 import os
 import requests
-import PyPDF2
+from pypdf import PdfReader
 import docx
 from fpdf import FPDF
 import streamlit as st
 
-BACKEND_URL = "https://interview-scoutiq.onrender.com/generate" 
+#BACKEND_URL = "http://127.0.0.1:8000/generate" #"https://interview-scoutiq.onrender.com/generate" 
+BASE_BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+BACKEND_URL = f"{BASE_BACKEND_URL}/generate"
+
 
 def run_prompt_chain(jd_text, resume_text):
     #prompt = question_prompt(jd_text, resume_text)
@@ -45,7 +48,7 @@ def fetch_insight_summary(jd_text, resume_text, user_tier):
 
     try:
         response = requests.post(
-            "https://interview-scoutiq.onrender.com/insight-summary",
+            f"{BASE_BACKEND_URL}/insight-summary",#"https://interview-scoutiq.onrender.com/insight-summary",
             json={"jd": jd_text, "resume": resume_text},
             timeout=60
         )
@@ -60,7 +63,7 @@ def fetch_skill_gap_highlights(jd_text, resume_text, user_tier):
         return None
     try:
         response = requests.post(
-            f"{BACKEND_URL.rsplit('/', 1)[0]}/skill-gap",
+            f"{BACKEND_URL.rsplit('/', 1)}/skill-gap",
             json={"jd": jd_text, "resume": resume_text},
             timeout=60
         )
@@ -72,7 +75,7 @@ def fetch_skill_gap_highlights(jd_text, resume_text, user_tier):
         return "N/A"
 
 def extract_text_from_pdf(file) -> str:
-    reader = PyPDF2.PdfReader(file)
+    reader = PdfReader(file)
     text = ""
     for page in reader.pages:
         text += page.extract_text() or ""
@@ -86,22 +89,27 @@ def extract_text_from_docx(file) -> str:
 def generate_pdf(technical, behavioral, followup):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=13)
+    pdf.set_font("Helvetica", size=13)
 
-    def clean_text(text):
-        return text.encode("ascii", errors="ignore").decode("ascii")
+    # def clean_text(text):
+    #     return text.encode("ascii", errors="ignore").decode("ascii")
 
     def write_section(title, questions):
-        pdf.set_font("Arial", 'B', size=13)
-        pdf.cell(200, 10, title, ln=True)
-        pdf.set_font("Arial", size=13)
+        pdf.set_font("Helvetica", 'B', size=13)
+        pdf.multi_cell(0, 10, title, ln=True)
+        pdf.set_font("Helvetica", size=13)
         for q in questions:
-            cleaned_q = clean_text(q)
-            pdf.multi_cell(0, 10, f"{cleaned_q}")
+            # cleaned_q = clean_text(q)
+            pdf.multi_cell(0, 10, f"- {q}", ln=True)
         pdf.ln()
 
     write_section("Technical Questions", technical)
     write_section("Behavioral Questions", behavioral)
     write_section("Red Flag / Follow-up Questions", followup)
 
-    return pdf.output(dest='S').encode('latin1')
+    pdf_output = pdf.output(dest="S")
+    if isinstance(pdf_output, str):  # old fpdf
+        pdf_output = pdf_output.encode("latin1")
+    elif isinstance(pdf_output, bytearray):  # new fpdf2
+        pdf_output = bytes(pdf_output)
+    return pdf_output

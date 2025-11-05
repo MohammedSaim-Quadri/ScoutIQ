@@ -1,0 +1,27 @@
+# requirements.in
+
+# Frontend
+streamlit
+
+# Backend
+fastapi
+uvicorn[standard]
+gunicorn
+python-dotenv
+
+# Database & Auth
+firebase-admin
+
+# Data Processing
+pypdf
+python-docx
+fpdf2
+
+# Utilities
+requests
+pandas
+python-multipart
+
+# LLM Orchestration
+langchain
+langchain-groq

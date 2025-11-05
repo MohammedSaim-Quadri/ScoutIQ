@@ -1,7 +1,7 @@
 import streamlit as st
 st.set_page_config(page_title="ScoutIQ App", layout="centered")
 from app.ui import run_ui
-from app.auth import auth_functions as auth
+from app import auth_functions as auth
 
 def main():
 

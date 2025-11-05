@@ -5,8 +5,17 @@ import requests, os
 from dotenv import load_dotenv
 import re
 
+from langchain_groq import ChatGroq
+
 load_dotenv()
 app = FastAPI()
+
+#initialize the groq chat model
+try:
+    llm = ChatGroq(model="llama-3.3-70b-versatile")
+except Exception as e:
+    print(f"Error initializing Groq model: {e}")
+    llm = None
 
 class Input(BaseModel):
     jd: str
@@ -14,71 +23,109 @@ class Input(BaseModel):
 
 @app.post("/generate")
 def generate_questions(data: Input):
+    if not llm:
+        return {"error": "LLM not initialized. Check API key.", "raw": ""}
+    
+
     prompt = question_prompt(data.jd, data.resume)
-    headers = {
-        "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-        "Content-Type": "application/json"
-    }
 
-    payload = {
-        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 512,
-        "temperature": 0.7,
-    }
-
-    response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
     try:
-        text = response.json()['choices'][0]['message']['content']
+        # Use LangChain to invoke the model
+        response = llm.invoke(prompt)
+        # The output from the model is a string. We pass it to your
+        # existing clean_response function to parse it.
+        text = response.content
         output = clean_response(text)
         return {"result": output}
     except Exception as e:
-        return {"error": str(e), "raw": response.text}
+        return {"error": str(e), "raw": "Failed to get response from LLM"}
+
+    # headers = {
+    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+    #     "Content-Type": "application/json"
+    # }
+
+    # payload = {
+    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+    #     "messages": [{"role": "user", "content": prompt}],
+    #     "max_tokens": 512,
+    #     "temperature": 0.7,
+    # }
+
+    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
+    # try:
+    #     text = response.json()['choices'][0]['message']['content']
+    #     output = clean_response(text)
+    #     return {"result": output}
+    # except Exception as e:
+    #     return {"error": str(e), "raw": response.text}
 
 @app.post("/insight-summary")
 def generate_insight(data: Input):
+    if not llm:
+        return {"error": "LLM not initialized.", "raw": ""}
+    
     prompt = insight_summary_prompt(data.jd,data.resume)
-    headers = {
-        "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 512,
-        "temperature": 0.7,
-    }
-
-    response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
 
     try:
-        text = response.json()['choices'][0]['message']['content']
-        return {"summary": text}
+        # This endpoint just needs a simple string response
+        response = llm.invoke(prompt)
+        return {"summary": response.content}
     except Exception as e:
-        return {"error": str(e), "raw": response.text}
+        return {"error": str(e), "raw": "Failed to get response from LLM"}
+
+    # headers = {
+    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+    #     "Content-Type": "application/json"
+    # }
+    # payload = {
+    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+    #     "messages": [{"role": "user", "content": prompt}],
+    #     "max_tokens": 512,
+    #     "temperature": 0.7,
+    # }
+
+    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
+
+    # try:
+    #     text = response.json()['choices'][0]['message']['content']
+    #     return {"summary": text}
+    # except Exception as e:
+    #     return {"error": str(e), "raw": response.text}
 
 
 @app.post("/skill-gap")
 def generate_skill_gap(data: Input):
+    if not llm:
+        return {"error": "LLM not initialized.", "raw": ""}
+    
     prompt = build_skill_gap_prompt(data.jd, data.resume)
-    headers = {
-        "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-        "Content-Type": "application/json"
-    }
 
-    payload = {
-        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 500,
-        "temperature": 0.7,
-    }
-
-    response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
     try:
-        text = response.json()['choices'][0]['message']['content']
-        return {"skill_gaps": text.strip()}
+        # This endpoint also just needs a simple string response
+        response = llm.invoke(prompt)
+        return {"skill_gaps": response.content.strip()}
     except Exception as e:
-        return {"error": str(e), "raw": response.text}
+        return {"error": str(e), "raw": "Failed to get response from LLM"}
+
+    # headers = {
+    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+    #     "Content-Type": "application/json"
+    # }
+
+    # payload = {
+    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+    #     "messages": [{"role": "user", "content": prompt}],
+    #     "max_tokens": 500,
+    #     "temperature": 0.7,
+    # }
+
+    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
+    # try:
+    #     text = response.json()['choices'][0]['message']['content']
+    #     return {"skill_gaps": text.strip()}
+    # except Exception as e:
+    #     return {"error": str(e), "raw": response.text}
 
 def clean_response(raw_output: str):
     # Normalize
