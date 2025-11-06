@@ -1,4 +1,5 @@
 import firebase_admin
+import pandas as pd
 from firebase_admin import firestore, credentials
 from fastapi import FastAPI, Request, Depends, HTTPException
 from pydantic import BaseModel
@@ -6,7 +7,7 @@ from llm_backend.prompts import question_prompt, insight_summary_prompt, build_s
 import requests, os
 from dotenv import load_dotenv
 import re
-from llm_backend.security import get_current_user
+from llm_backend.security import get_current_user, get_admin_user
 from langchain_groq import ChatGroq
 from llm_backend.models import ParsedResume, Input, ResumeInput
 from langchain_qdrant import Qdrant
@@ -252,7 +253,6 @@ async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user),
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rank candidates: {e}")
 
-
 def clean_response(raw_output: str):
     # Normalize
     raw_output = raw_output.replace("\\n", "\n").replace("```", "").strip()
@@ -285,3 +285,22 @@ def clean_response(raw_output: str):
         result[key] = questions
 
     return result
+
+
+@app.get("/admin/usage-logs")
+async def get_usage_logs(user: dict = Depends(get_admin_user)):
+    try:
+        logs_ref = db.collection("usage_logs").stream()
+        logs_list = [log.to_dict() for log in logs_ref]
+        return logs_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/admin/pro-users")
+async def get_pro_users(user: dict = Depends(get_admin_user)):
+    try:
+        users_ref = db.collection("pro_users").stream()
+        users_list = [user.to_dict() for user in users_ref]
+        return users_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

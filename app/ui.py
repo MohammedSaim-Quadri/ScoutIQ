@@ -204,13 +204,4 @@ def run_ui():
 
             db.collection("usage_logs").add(log_entry)
 
-    if user_email == "mohammedsaimquadri@gmail.com":  # replace with your email
-        st.subheader("📊 Admin: Generation Log")
-        import pandas as pd
-        try:
-            df = pd.read_csv("usage_logs.csv")
-            st.dataframe(df)
-        except FileNotFoundError:
-            st.info("No usage logs yet.")
-
 
