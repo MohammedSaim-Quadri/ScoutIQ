@@ -28,22 +28,8 @@ except Exception as e:
     print(f"Error initializing Firestore: {e}")
     db = None
 
-# Initialize Embeddings
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-# Initialize Qdrant Client
-qdrant_client = QdrantClient(
-    url=os.getenv("QDRANT_URL"),
-    api_key=os.getenv("QDRANT_API_KEY"),
-    timeout=60
-)
-
-qdrant = Qdrant(
-    client=qdrant_client,
-    collection_name="scoutiq_resumes",
-    embeddings=embeddings,
-)
-
+embeddings_model = None
+qdrant_db = None
 
 # --- Initialize LLM ---
 try:
@@ -51,6 +37,37 @@ try:
 except Exception as e:
     print(f"Error initializing Groq model: {e}")
     llm = None
+
+def get_qdrant():
+    """Dependency to lazy-load embeddings and Qdrant client"""
+    global embeddings_model, qdrant_db
+    
+    # This block only runs ONCE, on the first API call
+    if qdrant_db is None:
+        print("First request: Initializing embeddings and Qdrant...")
+        try:
+            # 1. THIS IS THE SLOW STEP we moved
+            embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            print("Embedding model loaded.")
+            
+            # 2. This is the network step we moved
+            qdrant_client = QdrantClient(
+                url=os.getenv("QDRANT_URL"),
+                api_key=os.getenv("QDRANT_API_KEY"),
+                timeout=60
+            )
+            
+            qdrant_db = Qdrant(
+                client=qdrant_client,
+                collection_name="scoutiq_resumes",
+                embeddings=embeddings_model,
+            )
+            print("Embeddings and Qdrant client initialized successfully.")
+        except Exception as e:
+            print(f"CRITICAL: Failed to initialize Qdrant/Embeddings: {e}")
+            # This will cause the first request to fail, but the server stays alive.
+            
+    return qdrant_db
 
 
 @app.post("/generate")
@@ -160,8 +177,8 @@ async def generate_skill_gap(data: Input, user: dict = Depends(get_current_user)
     #     return {"error": str(e), "raw": response.text}
 
 @app.post("/parse-resume", response_model=ParsedResume)
-async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user)):
-    if not llm or not db: 
+async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user), qdrant: Qdrant = Depends(get_qdrant)):
+    if not llm or not db or not qdrant: 
         raise HTTPException(status_code = 503, detail="LLM not initialized")
     
     structured_llm = llm.with_structured_output(ParsedResume)
@@ -201,7 +218,11 @@ async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user)
         raise HTTPException(status_code=500, detail=f"Failed to parse resume: {e}")
 
 @app.post("/rank-candidates")
-async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user)):
+async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user), qdrant: Qdrant = Depends(get_qdrant)):
+    
+    if not qdrant or not db:
+        raise HTTPException(status_code=503, detail="Database or Vector service not initialized")
+    
     try:
         search_results = await qdrant.asimilarity_search(
             data.jd,
