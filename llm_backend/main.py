@@ -3,7 +3,7 @@ import pandas as pd
 from firebase_admin import firestore, credentials
 from fastapi import FastAPI, Request, Depends, HTTPException
 from pydantic import BaseModel
-from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt, parse_resume_prompt
+from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt, parse_resume_prompt, job_seeker_prompt
 import requests, os
 from dotenv import load_dotenv
 import re
@@ -252,6 +252,19 @@ async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user),
         return ordered_candidates
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rank candidates: {e}")
+
+@app.post("/improve-resume")
+async def improve_resume(data: Input, user: dict = Depends(get_current_user)):
+    if not llm:
+        return {"error": "LLM not initialized.", "raw": ""}
+    
+    prompt = job_seeker_prompt(data.jd, data.resume)
+
+    try:
+        response = await llm.ainvoke(prompt)
+        return {"improvements": response.content}
+    except Exception as e:
+        return {"error": str(e), "raw": "Failed to get response from LLM"}
 
 def clean_response(raw_output: str):
     # Normalize

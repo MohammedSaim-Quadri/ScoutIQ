@@ -87,3 +87,25 @@ def parse_resume_prompt(resume_text: str) -> str:
 
     Return ONLY the JSON object.
     """
+
+def job_seeker_prompt(jd_text: str, resume_text: str) -> str:
+    return f"""
+    You are an expert career coach and professional resume writer.
+    Given the following **Target Job Description**:
+    ---
+    {jd_text}
+    ---
+    And the following **Candidate Resume**:
+    ---
+    {resume_text}
+    ---
+    Provide actionable, specific advice on how to improve the resume to
+    better match this job. Focus on:
+    1.  **Keyword Gaps:** What keywords from the JD are missing in the resume?
+    2.  **Framing Experience:** How can the existing experience be re-phrased
+        to highlight alignment with the JD's responsibilities?
+    3.  **Skills to Add:** What skills are implied by the JD that
+        the candidate might have but hasn't listed?
+
+    Give your feedback in helpful, encouraging markdown format.
+    """
