@@ -25,3 +25,8 @@ python-multipart
 # LLM Orchestration
 langchain
 langchain-groq
+
+qdrant-client
+langchain-qdrant
+langchain-community
+sentence-transformers

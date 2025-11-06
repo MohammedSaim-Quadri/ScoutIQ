@@ -1,28 +1,60 @@
-from fastapi import FastAPI, Request
+import firebase_admin
+from firebase_admin import firestore, credentials
+from fastapi import FastAPI, Request, Depends, HTTPException
 from pydantic import BaseModel
-from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt
+from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt, parse_resume_prompt
 import requests, os
 from dotenv import load_dotenv
 import re
-
+from llm_backend.security import get_current_user
 from langchain_groq import ChatGroq
+from llm_backend.models import ParsedResume, Input, ResumeInput
+from langchain_qdrant import Qdrant
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from qdrant_client import QdrantClient
+from langchain_core.documents import Document
+from llm_backend.models import JDInput
 
 load_dotenv()
 app = FastAPI()
 
-#initialize the groq chat model
+# --- Initialize Firebase ---
+try:
+    if not firebase_admin._apps:
+        cred = credentials.Certificate("firebase-service-key.json")
+        firebase_admin.initialize_app(cred)
+    db = firestore.client()
+except Exception as e:
+    print(f"Error initializing Firestore: {e}")
+    db = None
+
+# Initialize Embeddings
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+# Initialize Qdrant Client
+qdrant_client = QdrantClient(
+    url=os.getenv("QDRANT_URL"),
+    api_key=os.getenv("QDRANT_API_KEY"),
+    timeout=60
+)
+
+qdrant = Qdrant(
+    client=qdrant_client,
+    collection_name="scoutiq_resumes",
+    embeddings=embeddings,
+)
+
+
+# --- Initialize LLM ---
 try:
     llm = ChatGroq(model="llama-3.3-70b-versatile")
 except Exception as e:
     print(f"Error initializing Groq model: {e}")
     llm = None
 
-class Input(BaseModel):
-    jd: str
-    resume: str
 
 @app.post("/generate")
-def generate_questions(data: Input):
+async def generate_questions(data: Input, user: dict = Depends(get_current_user)):
     if not llm:
         return {"error": "LLM not initialized. Check API key.", "raw": ""}
     
@@ -31,7 +63,7 @@ def generate_questions(data: Input):
 
     try:
         # Use LangChain to invoke the model
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
         # The output from the model is a string. We pass it to your
         # existing clean_response function to parse it.
         text = response.content
@@ -61,7 +93,7 @@ def generate_questions(data: Input):
     #     return {"error": str(e), "raw": response.text}
 
 @app.post("/insight-summary")
-def generate_insight(data: Input):
+async def generate_insight(data: Input, user: dict = Depends(get_current_user)):
     if not llm:
         return {"error": "LLM not initialized.", "raw": ""}
     
@@ -69,7 +101,7 @@ def generate_insight(data: Input):
 
     try:
         # This endpoint just needs a simple string response
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
         return {"summary": response.content}
     except Exception as e:
         return {"error": str(e), "raw": "Failed to get response from LLM"}
@@ -95,7 +127,7 @@ def generate_insight(data: Input):
 
 
 @app.post("/skill-gap")
-def generate_skill_gap(data: Input):
+async def generate_skill_gap(data: Input, user: dict = Depends(get_current_user)):
     if not llm:
         return {"error": "LLM not initialized.", "raw": ""}
     
@@ -103,7 +135,7 @@ def generate_skill_gap(data: Input):
 
     try:
         # This endpoint also just needs a simple string response
-        response = llm.invoke(prompt)
+        response = await llm.ainvoke(prompt)
         return {"skill_gaps": response.content.strip()}
     except Exception as e:
         return {"error": str(e), "raw": "Failed to get response from LLM"}
@@ -126,6 +158,79 @@ def generate_skill_gap(data: Input):
     #     return {"skill_gaps": text.strip()}
     # except Exception as e:
     #     return {"error": str(e), "raw": response.text}
+
+@app.post("/parse-resume", response_model=ParsedResume)
+async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user)):
+    if not llm or not db: 
+        raise HTTPException(status_code = 503, detail="LLM not initialized")
+    
+    structured_llm = llm.with_structured_output(ParsedResume)
+    prompt = parse_resume_prompt(data.resume_text)
+
+    try:
+        parsed_data = await structured_llm.ainvoke(prompt)
+        doc_ref = db.collection("candidates").document()
+        doc_ref.set({
+            **parsed_data.model_dump(),
+            "user_uid": user["uid"],
+            "created_at": firestore.SERVER_TIMESTAMP
+        })
+
+        # Create a text blob to embed
+        content_to_embed = f"""
+        Name: {parsed_data.full_name}
+        Summary: {parsed_data.summary}
+        Skills: {', '.join([s.name for s in parsed_data.skills])}
+        """
+
+        # Create a LangChain Document
+        doc = Document(
+            page_content=content_to_embed,
+            metadata={
+                "firestore_id": doc_ref.id,
+                "user_uid": user["uid"],
+                "full_name": parsed_data.full_name
+            }
+        )
+
+        # Add to Qdrant
+        await qdrant.aadd_documents([doc], ids=[doc_ref.id])
+
+        return parsed_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse resume: {e}")
+
+@app.post("/rank-candidates")
+async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user)):
+    try:
+        search_results = await qdrant.asimilarity_search(
+            data.jd,
+            k = 10,
+            filter={"must": [{"key": "user_uid", "match": {"value": user["uid"]}}]}
+        )
+
+        if not search_results:
+            return
+        
+        firestore_ids = [doc.metadata["firestore_id"] for doc in search_results]
+        candidate_refs = [db.collection("candidates").document(fid) for fid in firestore_ids]
+        candidate_docs = db.get_all(candidate_refs)
+
+        candidates_data = []
+        for doc in candidate_docs:
+            if doc.exists:
+                candidates_data.append(doc.to_dict())
+        
+        ordered_candidates = []
+        id_to_candidate = {c['full_name']: c for c in candidates_data} # A simple map
+        for doc in search_results:
+            if doc.metadata["full_name"] in id_to_candidate:
+                ordered_candidates.append(id_to_candidate[doc.metadata["full_name"]])
+
+        return ordered_candidates
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rank candidates: {e}")
+
 
 def clean_response(raw_output: str):
     # Normalize

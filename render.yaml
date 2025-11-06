@@ -1,8 +1,0 @@
-services:
-  - type: pserv
-    name: scoutiq-ollama
-    region: oregon
-    runtime: docker
-    dockerContext: ./ollama
-    dockerfilePath: ./ollama/Dockerfile
-    plan: starter

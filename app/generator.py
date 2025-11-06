@@ -16,9 +16,17 @@ def run_prompt_chain(jd_text, resume_text):
     print("📨 Sending prompt to Llama...")
 
     try:
+
+        if 'id_token' not in st.session_state:
+            st.error("Authentication token not found. Please log in again")
+            return {"technical": [], "behavioral": [], "followup": []}
+        id_token = st.session_state.id_token
+        headers = {"Authorization": f"Bearer {id_token}"}
+
         response = requests.post(
             BACKEND_URL,
             json={"jd": jd_text, "resume": resume_text},
+            headers=headers,
             timeout=60
         )
 
@@ -47,9 +55,17 @@ def fetch_insight_summary(jd_text, resume_text, user_tier):
         return None
 
     try:
+
+        if 'id_token' not in st.session_state:
+            st.error("Authentication token not found. Please log in again")
+            return {"technical": [], "behavioral": [], "followup": []}
+        id_token = st.session_state.id_token
+        headers = {"Authorization": f"Bearer {id_token}"}
+
         response = requests.post(
             f"{BASE_BACKEND_URL}/insight-summary",#"https://interview-scoutiq.onrender.com/insight-summary",
             json={"jd": jd_text, "resume": resume_text},
+            headers=headers,
             timeout=60
         )
         response.raise_for_status()
@@ -62,9 +78,16 @@ def fetch_skill_gap_highlights(jd_text, resume_text, user_tier):
     if user_tier not in ["monthly", "yearly", "lifetime"]:
         return None
     try:
+        if 'id_token' not in st.session_state:
+            st.error("Authentication token not found. Please log in again")
+            return {"technical": [], "behavioral": [], "followup": []}
+        id_token = st.session_state.id_token
+        headers = {"Authorization": f"Bearer {id_token}"}
+
         response = requests.post(
-            f"{BACKEND_URL.rsplit('/', 1)}/skill-gap",
+            f"{BASE_BACKEND_URL}/skill-gap",
             json={"jd": jd_text, "resume": resume_text},
+            headers=headers,
             timeout=60
         )
         response.raise_for_status()

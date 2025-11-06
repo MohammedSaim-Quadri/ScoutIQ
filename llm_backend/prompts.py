@@ -69,3 +69,21 @@ Skill Gap Highlights:
 
 Avoid long paragraphs. Use concise bullets.
 """
+
+def parse_resume_prompt(resume_text: str) -> str:
+    return f"""
+    You are an expert resume parsing system.
+    Analyze the following resume text:
+    ---
+    {resume_text}
+    ---
+    Extract the following information and structure it as a JSON object:
+    - full_name: The candidate's full name.
+    - email: The candidate's email address.
+    - phone: The candidate's phone number.
+    - summary: A brief 2-3 sentence summary of the candidate's professional profile.
+    - skills: A list of key technical skills, with an optional level (e.g., "Python", "React").
+    - experience: A list of the candidate's most recent job experiences, including title, company, duration, and a summary.
+
+    Return ONLY the JSON object.
+    """

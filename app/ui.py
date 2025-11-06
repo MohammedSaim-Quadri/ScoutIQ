@@ -1,4 +1,5 @@
 import firebase_admin
+import requests, os
 from app.usage_tracker import get_today_usage, increment_today_usage
 from firebase_admin import credentials, firestore
 import streamlit as st
@@ -38,6 +39,7 @@ except Exception as e:
     st.stop()
 
 db = firestore.client()
+BASE_BACKEND_URL = os.getenv("BACKEND_URL", "[http://127.0.0.1:8000](http://127.0.0.1:8000)")
 
 def log_usage_to_firestore(email):
     try:
@@ -110,6 +112,26 @@ def run_ui():
         elif resume_file.name.endswith(".docx"):
             resume_text = extract_text_from_docx(file_bytes)
             st.success("Resume text extracted successfully!")
+
+        if 'parsed_resume' not in st.session_state or st.session_state.get('parsed_file_name')!= resume_file.name:
+            with st.spinner("Parsing resume..."):
+                try:
+                    # --- ADD THIS API CALL ---
+                    id_token = st.session_state.id_token
+                    headers = {"Authorization": f"Bearer {id_token}"}
+                    response = requests.post(
+                        f"{BASE_BACKEND_URL}/parse-resume",
+                        json={"resume_text": resume_text},
+                        headers=headers,
+                        timeout=60
+                    )
+                    response.raise_for_status()
+                    st.session_state.parsed_resume = response.json()
+                    st.session_state.parsed_file_name = resume_file.name
+                    st.success("Resume parsed and saved to your candidate database!")
+                    # --- END ADD ---
+                except Exception as e:
+                    st.error(f"Failed to parse resume: {e}")
         
         st.text_area("Extracted Resume Text(read-only)", value=resume_text, height=200, disabled=True)
     else:

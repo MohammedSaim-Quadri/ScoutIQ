@@ -83,6 +83,7 @@ def sign_in(email:str, password:str) -> None:
         # Save user info to session state and rerun
         #else:
         st.session_state.user_info = user_info
+        st.session_state.id_token = id_token
         st.rerun()
 
     except requests.exceptions.HTTPError as error:
@@ -107,6 +108,7 @@ def create_account(email:str, password:str) -> None:
         # st.session_state.auth_success = 'Check your inbox to verify your email'
         user_info = get_account_info(id_token)["users"][0]
         st.session_state.user_info = user_info
+        st.session_state.id_token = id_token
         st.session_state.auth_success = "✅ Account created and signed in!"
         st.rerun()
     
