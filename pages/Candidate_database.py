@@ -12,6 +12,16 @@ if 'user_info' not in st.session_state or 'id_token' not in st.session_state:
     st.page_link("pages/App.py", label="Log in", icon="🔐")
     st.stop()
 
+if 'user_tier' not in st.session_state:
+    st.error("Could not determine user tier. Please return to the main App page and try again.")
+    st.page_link("pages/App.py", label="Go to App Page", icon="🏠")
+    st.stop()
+
+if st.session_state.user_tier == "free":
+    st.error("The Candidate Database is a Pro feature.")
+    st.page_link("pages/Pricing.py", label="💎 Upgrade to Pro to save and rank candidates.", icon="💎")
+    st.stop()
+
 # Get auth token and backend URL
 id_token = st.session_state.id_token
 headers = {"Authorization": f"Bearer {id_token}"}

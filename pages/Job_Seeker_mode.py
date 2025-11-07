@@ -12,6 +12,18 @@ if 'user_info' not in st.session_state or 'id_token' not in st.session_state:
     st.page_link("pages/App.py", label="Log in", icon="🔐")
     st.stop()
 
+if 'user_tier' not in st.session_state:
+    # This triggers if they've been logged in, but the session state is old
+    # We can try to fetch it, but for now, we'll just ask them to re-log
+    st.error("Could not determine user tier. Please return to the main App page and try again.")
+    st.page_link("pages/App.py", label="Go to App Page", icon="🏠")
+    st.stop()
+
+if st.session_state.user_tier == "free":
+    st.error("Job Seeker Mode is a Pro feature.")
+    st.page_link("pages/Pricing.py", label="💎 Upgrade to Pro to get AI resume feedback.", icon="💎")
+    st.stop()
+
 id_token = st.session_state.id_token
 headers = {"Authorization": f"Bearer {id_token}"}
 BASE_BACKEND_URL = os.getenv("BACKEND_URL", "[http://127.0.0.1:8000](http://127.0.0.1:8000)")
