@@ -16,177 +16,124 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
 from llm_backend.models import JDInput
+from contextlib import asynccontextmanager
 
 load_dotenv()
-app = FastAPI()
+
+# --- Initialize Globals (will be populated during lifespan) ---
+db = None
+llm = None
+embeddings_model = None
+qdrant_db = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # === RUNS ON STARTUP ===
+    global db, llm, embeddings_model, qdrant_db
+    print("Startup Event: Initializing services...")
+
+    # Initialize Firebase
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate("firebase-service-key.json")
+            firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        print("Startup: Firebase initialized.")
+    except Exception as e:
+        print(f"CRITICAL: Failed to initialize Firestore: {e}")
+
+    # Initialize LLM
+    try:
+        llm = ChatGroq(model="llama-3.3-70b-versatile")
+        print("Startup: Groq LLM initialized.")
+    except Exception as e:
+        print(f"CRITICAL: Failed to initialize Groq model: {e}")
+
+    # Initialize Embeddings & Qdrant (The slow part)
+    try:
+        print("Startup: Loading embedding model...")
+        embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        print("Startup: Embedding model loaded.")
+
+        print("Startup: Connecting to Qdrant...")
+        qdrant_client = QdrantClient(
+            url=os.getenv("QDRANT_URL"),
+            api_key=os.getenv("QDRANT_API_KEY"),
+            timeout=60
+        )
+        qdrant_db = Qdrant(
+            client=qdrant_client,
+            collection_name="scoutiq_resumes",
+            embeddings=embeddings_model,
+        )
+        print("Startup: Qdrant client initialized successfully.")
+    except Exception as e:
+        print(f"CRITICAL: Failed to initialize Qdrant/Embeddings: {e}")
+
+    print("Startup complete. Server is ready.")
+    yield
+    # === RUNS ON SHUTDOWN (optional) ===
+    print("Shutdown Event: Cleaning up...")
+
+# --- Pass lifespan to the FastAPI app ---
+app = FastAPI(lifespan=lifespan)
 
 class FeedbackInput(BaseModel):
     score: str
     text: Optional[str] = None
     page: str
 
-# --- Initialize Firebase ---
-try:
-    if not firebase_admin._apps:
-        cred = credentials.Certificate("firebase-service-key.json")
-        firebase_admin.initialize_app(cred)
-    db = firestore.client()
-except Exception as e:
-    print(f"Error initializing Firestore: {e}")
-    db = None
+def get_db():
+    if db is None:
+        raise HTTPException(status_code=503, detail="Firestore not initialized")
+    return db
 
-embeddings_model = None
-qdrant_db = None
-
-# --- Initialize LLM ---
-try:
-    llm = ChatGroq(model="llama-3.3-70b-versatile")
-except Exception as e:
-    print(f"Error initializing Groq model: {e}")
-    llm = None
+def get_llm():
+    if llm is None:
+        raise HTTPException(status_code=503, detail="LLM not initialized")
+    return llm
 
 def get_qdrant():
-    """Dependency to lazy-load embeddings and Qdrant client"""
-    global embeddings_model, qdrant_db
-    
-    # This block only runs ONCE, on the first API call
     if qdrant_db is None:
-        print("First request: Initializing embeddings and Qdrant...")
-        try:
-            # 1. THIS IS THE SLOW STEP we moved
-            embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            print("Embedding model loaded.")
-            
-            # 2. This is the network step we moved
-            qdrant_client = QdrantClient(
-                url=os.getenv("QDRANT_URL"),
-                api_key=os.getenv("QDRANT_API_KEY"),
-                timeout=60
-            )
-            
-            qdrant_db = Qdrant(
-                client=qdrant_client,
-                collection_name="scoutiq_resumes",
-                embeddings=embeddings_model,
-            )
-            print("Embeddings and Qdrant client initialized successfully.")
-        except Exception as e:
-            print(f"CRITICAL: Failed to initialize Qdrant/Embeddings: {e}")
-            # This will cause the first request to fail, but the server stays alive.
-            
+        raise HTTPException(status_code=503, detail="Vector DB not initialized")
     return qdrant_db
 
+# --- API Endpoints ---
 
 @app.post("/generate")
-async def generate_questions(data: Input, user: dict = Depends(get_current_user)):
-    if not llm:
-        return {"error": "LLM not initialized. Check API key.", "raw": ""}
-    
-
+async def generate_questions(data: Input, user: dict = Depends(get_current_user), llm: ChatGroq = Depends(get_llm)):
     prompt = question_prompt(data.jd, data.resume)
-
     try:
-        # Use LangChain to invoke the model
         response = await llm.ainvoke(prompt)
-        # The output from the model is a string. We pass it to your
-        # existing clean_response function to parse it.
         text = response.content
         output = clean_response(text)
         return {"result": output}
     except Exception as e:
         return {"error": str(e), "raw": "Failed to get response from LLM"}
 
-    # headers = {
-    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-    #     "Content-Type": "application/json"
-    # }
-
-    # payload = {
-    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    #     "messages": [{"role": "user", "content": prompt}],
-    #     "max_tokens": 512,
-    #     "temperature": 0.7,
-    # }
-
-    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
-    # try:
-    #     text = response.json()['choices'][0]['message']['content']
-    #     output = clean_response(text)
-    #     return {"result": output}
-    # except Exception as e:
-    #     return {"error": str(e), "raw": response.text}
-
 @app.post("/insight-summary")
-async def generate_insight(data: Input, user: dict = Depends(get_current_user)):
-    if not llm:
-        return {"error": "LLM not initialized.", "raw": ""}
-    
+async def generate_insight(data: Input, user: dict = Depends(get_current_user), llm: ChatGroq = Depends(get_llm)):
     prompt = insight_summary_prompt(data.jd,data.resume)
-
     try:
-        # This endpoint just needs a simple string response
         response = await llm.ainvoke(prompt)
         return {"summary": response.content}
     except Exception as e:
         return {"error": str(e), "raw": "Failed to get response from LLM"}
 
-    # headers = {
-    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-    #     "Content-Type": "application/json"
-    # }
-    # payload = {
-    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    #     "messages": [{"role": "user", "content": prompt}],
-    #     "max_tokens": 512,
-    #     "temperature": 0.7,
-    # }
-
-    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
-
-    # try:
-    #     text = response.json()['choices'][0]['message']['content']
-    #     return {"summary": text}
-    # except Exception as e:
-    #     return {"error": str(e), "raw": response.text}
-
-
 @app.post("/skill-gap")
-async def generate_skill_gap(data: Input, user: dict = Depends(get_current_user)):
-    if not llm:
-        return {"error": "LLM not initialized.", "raw": ""}
-    
+async def generate_skill_gap(data: Input, user: dict = Depends(get_current_user), llm: ChatGroq = Depends(get_llm)):
     prompt = build_skill_gap_prompt(data.jd, data.resume)
-
     try:
-        # This endpoint also just needs a simple string response
         response = await llm.ainvoke(prompt)
         return {"skill_gaps": response.content.strip()}
     except Exception as e:
         return {"error": str(e), "raw": "Failed to get response from LLM"}
 
-    # headers = {
-    #     "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-    #     "Content-Type": "application/json"
-    # }
-
-    # payload = {
-    #     "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    #     "messages": [{"role": "user", "content": prompt}],
-    #     "max_tokens": 500,
-    #     "temperature": 0.7,
-    # }
-
-    # response = requests.post("https://api.together.xyz/v1/chat/completions", json=payload, headers=headers)
-    # try:
-    #     text = response.json()['choices'][0]['message']['content']
-    #     return {"skill_gaps": text.strip()}
-    # except Exception as e:
-    #     return {"error": str(e), "raw": response.text}
-
 @app.post("/parse-resume", response_model=ParsedResume)
-async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user), qdrant: Qdrant = Depends(get_qdrant)):
-    if not llm or not db or not qdrant: 
-        raise HTTPException(status_code = 503, detail="LLM not initialized")
+async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user), 
+                       qdrant: Qdrant = Depends(get_qdrant), 
+                       llm: ChatGroq = Depends(get_llm),
+                       db: firestore.Client = Depends(get_db)):
     
     structured_llm = llm.with_structured_output(ParsedResume)
     prompt = parse_resume_prompt(data.resume_text)
@@ -200,14 +147,12 @@ async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user)
             "created_at": firestore.SERVER_TIMESTAMP
         })
 
-        # Create a text blob to embed
         content_to_embed = f"""
         Name: {parsed_data.full_name}
         Summary: {parsed_data.summary}
         Skills: {', '.join([s.name for s in parsed_data.skills])}
         """
 
-        # Create a LangChain Document
         doc = Document(
             page_content=content_to_embed,
             metadata={
@@ -217,18 +162,15 @@ async def parse_resume(data: ResumeInput, user: dict = Depends(get_current_user)
             }
         )
 
-        # Add to Qdrant
         await qdrant.aadd_documents([doc], ids=[doc_ref.id])
-
         return parsed_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse resume: {e}")
 
 @app.post("/rank-candidates")
-async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user), qdrant: Qdrant = Depends(get_qdrant)):
-    
-    if not qdrant or not db:
-        raise HTTPException(status_code=503, detail="Database or Vector service not initialized")
+async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user), 
+                          qdrant: Qdrant = Depends(get_qdrant),
+                          db: firestore.Client = Depends(get_db)):
     
     try:
         search_results = await qdrant.asimilarity_search(
@@ -238,7 +180,7 @@ async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user),
         )
 
         if not search_results:
-            return
+            return []
         
         firestore_ids = [doc.metadata["firestore_id"] for doc in search_results]
         candidate_refs = [db.collection("candidates").document(fid) for fid in firestore_ids]
@@ -250,22 +192,21 @@ async def rank_candidates(data: JDInput, user: dict = Depends(get_current_user),
                 candidates_data.append(doc.to_dict())
         
         ordered_candidates = []
-        id_to_candidate = {c['full_name']: c for c in candidates_data} # A simple map
+        # Create a map based on firestore_id for accurate ordering
+        id_to_candidate = {c.id: c.to_dict() for c in candidate_docs if c.exists}
+        
         for doc in search_results:
-            if doc.metadata["full_name"] in id_to_candidate:
-                ordered_candidates.append(id_to_candidate[doc.metadata["full_name"]])
+            fs_id = doc.metadata["firestore_id"]
+            if fs_id in id_to_candidate:
+                ordered_candidates.append(id_to_candidate[fs_id])
 
         return ordered_candidates
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rank candidates: {e}")
 
 @app.post("/improve-resume")
-async def improve_resume(data: Input, user: dict = Depends(get_current_user)):
-    if not llm:
-        return {"error": "LLM not initialized.", "raw": ""}
-    
+async def improve_resume(data: Input, user: dict = Depends(get_current_user), llm: ChatGroq = Depends(get_llm)):
     prompt = job_seeker_prompt(data.jd, data.resume)
-
     try:
         response = await llm.ainvoke(prompt)
         return {"improvements": response.content}
@@ -273,17 +214,12 @@ async def improve_resume(data: Input, user: dict = Depends(get_current_user)):
         return {"error": str(e), "raw": "Failed to get response from LLM"}
 
 def clean_response(raw_output: str):
-    # Normalize
     raw_output = raw_output.replace("\\n", "\n").replace("```", "").strip()
-
-    # Split sections using robust regex
-    sections = re.split(r"(?i)^\s*(technical questions|behavioral questions|red flag\s*/\s*follow[- ]?up questions)[:：]\s*$", raw_output, flags=re.MULTILINE)
-
-    # We expect: ['', 'Technical Questions', '...questions...', 'Behavioral Questions', '...questions...', ...]
+    sections = re.split(r"(?i)^\s*(technical questions|behavioral questions|red flag\s*/\s*follow[- ]?up questions)[::]\s*$", raw_output, flags=re.MULTILINE)
     result = {"technical": [], "behavioral": [], "followup": []}
     
     if len(sections) < 2:
-        return result  # fallback in case nothing matched
+        return result
 
     label_map = {
         "technical questions": "technical",
@@ -305,9 +241,8 @@ def clean_response(raw_output: str):
 
     return result
 
-
 @app.get("/admin/usage-logs")
-async def get_usage_logs(user: dict = Depends(get_admin_user)):
+async def get_usage_logs(user: dict = Depends(get_admin_user), db: firestore.Client = Depends(get_db)):
     try:
         logs_ref = db.collection("usage_logs").stream()
         logs_list = [log.to_dict() for log in logs_ref]
@@ -316,7 +251,7 @@ async def get_usage_logs(user: dict = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/admin/pro-users")
-async def get_pro_users(user: dict = Depends(get_admin_user)):
+async def get_pro_users(user: dict = Depends(get_admin_user), db: firestore.Client = Depends(get_db)):
     try:
         users_ref = db.collection("pro_users").stream()
         users_list = [user.to_dict() for user in users_ref]
@@ -325,10 +260,7 @@ async def get_pro_users(user: dict = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/submit-feedback")
-async def submit_feedback(data: FeedbackInput, user: dict = Depends(get_current_user)):
-    if not db:
-        raise HTTPException(status_code=503, detail="Database not initialized")
-    
+async def submit_feedback(data: FeedbackInput, user: dict = Depends(get_current_user), db: firestore.Client = Depends(get_db)):
     try:
         db.collection("feedback").add({
             "user_uid": user["uid"],

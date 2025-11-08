@@ -1,43 +1,26 @@
 import streamlit as st
 st.set_page_config(page_title="ScoutIQ App", layout="centered")
 from app.ui import run_ui
-from app import auth_functions as auth
 from streamlit_feedback import streamlit_feedback
 import requests, os
 
 BASE_BACKEND_URL = os.getenv("BACKEND_URL", "[http://127.0.0.1:8000](http://127.0.0.1:8000)")
-def main():
 
-    # 🛡️ If already logged in → show main app
-    if 'user_info' in st.session_state:
-        run_ui()
-        return
+# The login check is now handled by the main app.py router.
+# If we are here, the user is already logged in.
+if 'user_info' not in st.session_state:
+    st.error("Please log in to access this page.")
+    st.page_link("app.py", label="Go to Login", icon="🔐")
+    st.stop()
 
-    st.title("🔐 Log in to ScoutIQ")
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    choice = col2.selectbox("Do you have an account?", ["Yes", "No", "Forgot Password"])
-
-    with col2.form("auth_form"):
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password") if choice in ["Yes", "No"] else ""
-        submit = st.form_submit_button("Submit")
-    st.page_link("Home.py", label="⬅️ Back to Home", icon="🏠")
-    if submit:
-        if choice == "Yes":
-            auth.sign_in(email, password)
-        elif choice == "No":
-            auth.create_account(email, password)
-        elif choice == "Forgot Password":
-            auth.reset_password(email)
-
-    if 'auth_success' in st.session_state:
-        st.success(st.session_state.auth_success)
-        del st.session_state.auth_success
-    elif 'auth_warning' in st.session_state:
-        st.warning(st.session_state.auth_warning)
-        del st.session_state.auth_warning
-
+# The user_tier is also cached by app.py
+if 'user_tier' not in st.session_state:
+    st.error("Could not determine user tier. Please log in again.")
+    st.page_link("app.py", label="Go to Login", icon="🔐")
+    st.stop()
+    
+# Run the main application UI
+run_ui()
     
 def send_feedback(feedback_data, page_name):
     # This callback runs when feedback is submitted
@@ -66,6 +49,3 @@ streamlit_feedback(
     on_submit=send_feedback,
     args=("Recruiter Mode",) # Change this for each page
 )
-
-if __name__ == "__main__":
-    main()

@@ -3,6 +3,8 @@ import requests
 import streamlit as st
 import os
 from dotenv import load_dotenv
+import jwt
+from jwt.exceptions import PyJWTError
 load_dotenv()
 
 ## -------------------------------------------------------------------------------------------------
@@ -62,6 +64,20 @@ def raise_detailed_error(request_object):
         request_object.raise_for_status()
     except requests.exceptions.HTTPError as error:
         raise requests.exceptions.HTTPError(error, request_object.text)
+    
+def decode_id_token(id_token):
+    """
+    Decodes the Firebase ID token *without* verification (as it's already verified by sign_in)
+    to extract custom claims.
+    """
+    try:
+        # We don't need to verify the signature, just decode the payload
+        # This avoids a network call to fetch Google's public keys
+        decoded_token = jwt.decode(id_token, options={"verify_signature": False})
+        return decoded_token
+    except PyJWTError as e:
+        print(f"Error decoding token: {e}")
+        return {}
 
 ## -------------------------------------------------------------------------------------------------
 ## Authentication functions ------------------------------------------------------------------------
@@ -70,18 +86,22 @@ def raise_detailed_error(request_object):
 def sign_in(email:str, password:str) -> None:
     try:
         # Attempt to sign in with email and password
-        id_token = sign_in_with_email_and_password(email,password)['idToken']
+        response_json = sign_in_with_email_and_password(email, password)
+        id_token = response_json['idToken']
 
         # Get account information
         user_info = get_account_info(id_token)["users"][0]
 
-        # If email is not verified, send verification email and do not sign in
-        # if not user_info["emailVerified"]:
-        #     send_email_verification(id_token)
-        #     st.session_state.auth_warning = 'Check your email to verify your account'
+        # --- FIX: DECODE TOKEN TO GET CUSTOM CLAIMS ---
+        # The idToken contains claims, the user_info object does not
+        token_claims = decode_id_token(id_token)
+        
+        # Merge claims (like 'admin') into the user_info dictionary
+        # This ensures st.session_state.user_info has all data
+        user_info.update(token_claims) 
+        # --- END FIX ---
 
         # Save user info to session state and rerun
-        #else:
         st.session_state.user_info = user_info
         st.session_state.id_token = id_token
         st.rerun()
@@ -101,12 +121,17 @@ def sign_in(email:str, password:str) -> None:
 def create_account(email:str, password:str) -> None:
     try:
         # Create account (and save id_token)
-        id_token = create_user_with_email_and_password(email,password)['idToken']
-
-        # Create account and send email verification
-        # send_email_verification(id_token)
-        # st.session_state.auth_success = 'Check your inbox to verify your email'
+        response_json = create_user_with_email_and_password(email, password)
+        id_token = response_json['idToken']
+        
         user_info = get_account_info(id_token)["users"][0]
+        
+        # --- FIX: DECODE TOKEN TO GET CUSTOM CLAIMS ---
+        # On creation, this will be empty, but it makes the logic consistent
+        token_claims = decode_id_token(id_token)
+        user_info.update(token_claims)
+        # --- END FIX ---
+
         st.session_state.user_info = user_info
         st.session_state.id_token = id_token
         st.session_state.auth_success = "✅ Account created and signed in!"

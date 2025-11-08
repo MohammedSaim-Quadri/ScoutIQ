@@ -13,7 +13,7 @@ if 'user_info' not in st.session_state or 'id_token' not in st.session_state:
     st.stop()
 
 # This check happens on the frontend AND backend for security
-if st.session_state.user_info.get("email")!= "mohammedsaimquadri@gmail.com":
+if st.session_state.user_info.get("email")!= "interviewscoutiq@gmail.com":
     st.error("You do not have permission to view this page.")
     st.stop()
 

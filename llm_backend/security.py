@@ -36,12 +36,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     
 async def get_admin_user(user: dict = Depends(get_current_user)):
     """
-    Dependency to verify user is an admin.
-    For now, uses the hardcoded email.
+    Dependency to verify user is an admin by checking custom claims.
     """
-    # TODO: Replace this with a check for custom claims
-    # if not user.get("admin"):
-    if user.get("email")!= "interviewscoutiq@gmail.com":
+    # FIX: Check for the 'admin' claim, not a hardcoded email
+    if not user.get("admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have admin privileges",

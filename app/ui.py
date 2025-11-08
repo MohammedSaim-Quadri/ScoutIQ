@@ -130,7 +130,7 @@ def run_ui():
                 all_resumes_texts.append((resume_file.name, text))
         
         if all_resumes_texts:
-            resume_text = all_resumes_texts[1]
+            resume_text = all_resumes_texts[0][1]
 
             if len(all_resumes_texts)>1:
                 st.text_area(
