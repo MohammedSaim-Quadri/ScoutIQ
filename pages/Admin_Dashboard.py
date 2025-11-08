@@ -9,7 +9,7 @@ st.title("📊 Admin Dashboard")
 
 if 'user_info' not in st.session_state or 'id_token' not in st.session_state:
     st.error("You must be logged in to access this page.")
-    st.page_link("pages/App.py", label="Log in", icon="🔐")
+    st.page_link("pages/Recruiter_Mode.py", label="Log in", icon="🔐")
     st.stop()
 
 # This check happens on the frontend AND backend for security

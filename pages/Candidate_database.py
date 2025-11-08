@@ -9,12 +9,12 @@ st.title("🗂️ Candidate Database & Ranking")
 # Check for login
 if 'user_info' not in st.session_state or 'id_token' not in st.session_state:
     st.error("You must be logged in to access this page.")
-    st.page_link("pages/App.py", label="Log in", icon="🔐")
+    st.page_link("pages/Recruiter_Mode.py", label="Log in", icon="🔐")
     st.stop()
 
 if 'user_tier' not in st.session_state:
     st.error("Could not determine user tier. Please return to the main App page and try again.")
-    st.page_link("pages/App.py", label="Go to App Page", icon="🏠")
+    st.page_link("pages/Recruiter_Mode.py", label="Go to App Page", icon="🏠")
     st.stop()
 
 if st.session_state.user_tier == "free":

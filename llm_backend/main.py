@@ -2,7 +2,8 @@ import firebase_admin
 import pandas as pd
 from firebase_admin import firestore, credentials
 from fastapi import FastAPI, Request, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from llm_backend.prompts import question_prompt, insight_summary_prompt, build_skill_gap_prompt, parse_resume_prompt, job_seeker_prompt
 import requests, os
 from dotenv import load_dotenv
@@ -18,6 +19,11 @@ from llm_backend.models import JDInput
 
 load_dotenv()
 app = FastAPI()
+
+class FeedbackInput(BaseModel):
+    score: str
+    text: Optional[str] = None
+    page: str
 
 # --- Initialize Firebase ---
 try:
@@ -317,3 +323,21 @@ async def get_pro_users(user: dict = Depends(get_admin_user)):
         return users_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/submit-feedback")
+async def submit_feedback(data: FeedbackInput, user: dict = Depends(get_current_user)):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    
+    try:
+        db.collection("feedback").add({
+            "user_uid": user["uid"],
+            "user_email": user.get("email"),
+            "score": data.score,
+            "text": data.text,
+            "page": data.page,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        })
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save feedback: {e}")

@@ -30,3 +30,5 @@ qdrant-client
 langchain-qdrant
 langchain-community
 sentence-transformers
+
+streamlit-feedback
