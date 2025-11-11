@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     # Initialize Embeddings & Qdrant (The slow part)
     try:
         print("Startup: Loading embedding model...")
-        embeddings_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L3-v2")
         print("Startup: Embedding model loaded.")
 
         print("Startup: Connecting to Qdrant...")
