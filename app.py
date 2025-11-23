@@ -22,9 +22,7 @@ def login_page():
         email = st.text_input("Email")
         password = st.text_input("Password", type="password") if choice in ["Yes", "No"] else ""
         submit = st.form_submit_button("Submit")
-    
-    # This is the new "Back to Home" for the login page
-    st.page_link("app.py", label="⬅️ Back to Home", icon="🏠") 
+
 
     if submit:
         if choice == "Yes":
@@ -49,31 +47,61 @@ def welcome_page():
     """
     st.title("Welcome to ScoutIQ!")
     st.subheader("AI-powered Interview Question Generator")
+
+    # Hero section
     st.markdown("""
-    ScoutIQ helps **founders**, **recruiters**, and **job seekers** instantly generate high-quality, role-specific interview questions using AI.
-
-    ### 🚀 How It Works:
-    1. Paste a **Job Description**
-    2. Upload or paste a **Candidate Resume**
-    3. Get **tailored technical, behavioral, and red flag questions** in seconds!
-
-    ---
-    ### 💎 Pricing
-    | Tier       | Features                                    |
-    |------------|---------------------------------------------|
-    [cite_start]| **Free** | 3 generations/month, PDF export             | [cite: 25]
-    | **Pro** | Unlimited generations, priority support     |
-    
-    ---
-
-    ### 🔐 Ready to get started?
-    Click below to log in and launch the app.
+    Generate **role-specific interview questions** in seconds using AI.  
+    Perfect for **recruiters**, **founders**, and **job seekers**.
     """)
-    # This button now just goes to the login page
-    st.page_link(pg_login, label="Launch ScoutIQ App", icon="💻")
-    with st.sidebar:
-        st.markdown("👋 Not a Pro user yet?")
-        st.page_link(pg_pricing, label="💎 Upgrade to Pro")
+
+    # How it works
+    st.markdown("### 🚀 How It Works")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("#### 1️⃣ Paste JD")
+        st.markdown("Add the job description")
+    
+    with col2:
+        st.markdown("#### 2️⃣ Upload Resume")
+        st.markdown("Upload candidate's resume")
+    
+    with col3:
+        st.markdown("#### 3️⃣ Get Questions")
+        st.markdown("AI generates tailored questions")
+    
+    st.markdown("---")
+
+    # Pricing
+    st.markdown("### 💎 Choose Your Plan")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.info("🆓 **Free Tier**")
+        st.markdown("""
+        - 3 generations/month
+        - PDF export
+        - Interview questions only
+        - Perfect for trying out ScoutIQ
+        """)
+    
+    with col2:
+        st.success("💎 **Pro Tier**")
+        st.markdown("""
+        - ✨ Unlimited generations
+        - 📊 Resume insights & skill gaps
+        - 🚀 Job seeker mode
+        - ⚡ Priority support
+        """)
+        st.markdown("[Upgrade to Pro →](https://saimquadri.gumroad.com/l/scoutiq-pro-monthly)")
+    
+    st.markdown("---")
+    
+    # CTA
+    st.markdown("### 🔐 Get Started")
+    st.info("👈 Click **Login** in the sidebar to start generating questions!")
+
 
 def logout_page():
     """A simple page function to log the user out."""
@@ -81,11 +109,10 @@ def logout_page():
     st.rerun()
 
 # --- Page Definitions ---
-# Define all possible pages in the app using st.Page
 pg_welcome = st.Page(welcome_page, title="Home", icon="🏠", default=True)
 pg_login = st.Page(login_page, title="Login", icon="🔐")
 pg_logout = st.Page(logout_page, title="Logout", icon="👋")
-# Point to the new 'app_pages' directory
+
 pg_recruiter = st.Page("app_pages/Recruiter_Mode.py", title="Recruiter Mode", icon="💻")
 pg_candidate_db = st.Page("app_pages/Candidate_Database.py", title="Candidate Database", icon="🗂️")
 pg_job_seeker = st.Page("app_pages/Job_Seeker_Mode.py", title="Job Seeker Mode", icon="🚀")
@@ -98,20 +125,16 @@ user_tier = "free"
 is_admin = False
 
 if is_logged_in:
-    # FIX 4a: Check for and cache the user tier ONCE
     if 'user_tier' not in st.session_state:
         st.session_state.user_tier = is_pro_user(st.session_state.user_info['email'])
     
     user_tier = st.session_state.get("user_tier", "free")
-    
-    # FIX :Check for the 'admin' claim from the ID token info,
-    # which is stored in st.session_state.user_info
     is_admin = st.session_state.user_info.get("admin") == True
 
-# --- Dynamic Navigation Logic (Fixes Priority 5) ---
+# --- Dynamic Navigation Logic---
 if not is_logged_in:
     # User is logged out. Show Home, Login, and Pricing.
-    pg = st.navigation([pg_welcome, pg_login, pg_pricing])
+    pg = st.navigation({"": [pg_welcome, pg_login, pg_pricing]})
 else:
     # User is logged in. Build the sidebar dynamically.
     page_map = {
