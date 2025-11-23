@@ -29,6 +29,6 @@ langchain-groq
 qdrant-client
 langchain-qdrant
 langchain-community
-sentence-transformers
+voyageai
 
 streamlit-feedback

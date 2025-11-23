@@ -12,7 +12,7 @@ from llm_backend.security import get_current_user, get_admin_user
 from langchain_groq import ChatGroq
 from llm_backend.models import ParsedResume, Input, ResumeInput
 from langchain_qdrant import Qdrant
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import VoyageEmbeddings
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
 from llm_backend.models import JDInput
@@ -52,7 +52,10 @@ async def lifespan(app: FastAPI):
     # Initialize Embeddings & Qdrant (The slow part)
     try:
         print("Startup: Loading embedding model...")
-        embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L3-v2")
+        embeddings_model = VoyageEmbeddings(
+            model = "voyage-3.5-lite",
+            voyage_api_key = os.getenv("VOYAGE_API_KEY")
+        )
         print("Startup: Embedding model loaded.")
 
         print("Startup: Connecting to Qdrant...")
@@ -63,7 +66,7 @@ async def lifespan(app: FastAPI):
         )
         qdrant_db = Qdrant(
             client=qdrant_client,
-            collection_name="scoutiq_resumes",
+            collection_name="scoutiq_resumes_v2",
             embeddings=embeddings_model,
         )
         print("Startup: Qdrant client initialized successfully.")
@@ -247,6 +250,53 @@ async def get_usage_logs(user: dict = Depends(get_admin_user), db: firestore.Cli
         logs_ref = db.collection("usage_logs").stream()
         logs_list = [log.to_dict() for log in logs_ref]
         return logs_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.get("/admin/embedding-stats")
+async def get_embedding_stats(
+    user: dict = Depends(get_admin_user),
+    db: firestore.Client = Depends(get_db)
+):
+    """
+    Track how many tokens you've used for embeddings
+    Helps you monitor your 200M free token limit
+    """
+    try:
+        # Query Firestore for all embedding operations
+        logs = db.collection("usage_logs").stream()
+        
+        total_resumes_parsed = 0
+        total_searches = 0
+        
+        for log in logs:
+            data = log.to_dict()
+            if data.get("has_insights"):  # Pro users who parsed resumes
+                total_resumes_parsed += 1
+            # Add search tracking if you implement it
+        
+        # Estimate token usage (rough calculation)
+        avg_resume_tokens = 800
+        avg_search_tokens = 400
+        
+        estimated_tokens = (
+            total_resumes_parsed * avg_resume_tokens +
+            total_searches * avg_search_tokens
+        )
+        
+        free_tier_limit = 200_000_000  # 200M tokens
+        percentage_used = (estimated_tokens / free_tier_limit) * 100
+        
+        return {
+            "total_resumes_parsed": total_resumes_parsed,
+            "total_searches": total_searches,
+            "estimated_tokens_used": estimated_tokens,
+            "free_tier_limit": free_tier_limit,
+            "percentage_used": f"{percentage_used:.2f}%",
+            "tokens_remaining": free_tier_limit - estimated_tokens,
+            "model": "voyage-3.5-lite"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
