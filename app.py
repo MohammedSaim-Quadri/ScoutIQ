@@ -88,7 +88,7 @@ pg_logout = st.Page(logout_page, title="Logout", icon="👋")
 # Point to the new 'app_pages' directory
 pg_recruiter = st.Page("app_pages/Recruiter_Mode.py", title="Recruiter Mode", icon="💻")
 pg_candidate_db = st.Page("app_pages/Candidate_Database.py", title="Candidate Database", icon="🗂️")
-pg_job_seeker = st.Page("app_pages/Job_Seeker_mode.py", title="Job Seeker Mode", icon="🚀")
+pg_job_seeker = st.Page("app_pages/Job_Seeker_Mode.py", title="Job Seeker Mode", icon="🚀")
 pg_pricing = st.Page("app_pages/Pricing.py", title="Pricing", icon="💎")
 pg_admin = st.Page("app_pages/Admin_Dashboard.py", title="Admin Dashboard", icon="📊")
 
