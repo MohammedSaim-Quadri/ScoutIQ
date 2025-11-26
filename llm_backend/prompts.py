@@ -1,4 +1,5 @@
-def question_prompt(jd_text:str, resume_text:str) -> str:
+def free_tier_prompt(jd_text: str, resume_text: str) -> str:
+    """Only generates interview questions for free users"""
     return f"""
 You are an expert technical recruiter.
 
@@ -8,10 +9,10 @@ Given the following job description:
 And the following candidate resume:
 {resume_text}
 
-Generate:
+Generate ONLY interview questions:
 - 5 **Technical Interview Questions**
 - 3 **Behavioral Interview Questions**
-- 2 **Red Flag or Follow-Up Questions** based on mismatches or missing info
+- 2 **Red Flag or Follow-Up Questions**
 
 ⚠️ Format requirements:
 - Start each section with these exact labels:
@@ -19,9 +20,52 @@ Generate:
   - Behavioral Questions:
   - Red Flag / Follow-Up Questions:
 - Each question should start with a dash (-) or bullet (•), one per line.
-- Do not include explanations or guidance — just the questions in the correct sections.
+- Do not include explanations or guidance – just the questions.
 - ⚠️ Do not repeat any section. Stop after generating these 10 questions.
 """
+
+def pro_tier_prompt(jd_text: str, resume_text: str) -> str:
+    """Generates everything in ONE call for Pro users"""
+    return f"""
+You are an expert technical recruiter and career analyst.
+
+Given the following job description:
+{jd_text}
+
+And the following candidate resume:
+{resume_text}
+
+Generate a COMPLETE analysis with ALL sections below:
+
+## SECTION 1: INTERVIEW QUESTIONS
+Generate:
+- 5 **Technical Interview Questions**
+- 3 **Behavioral Interview Questions**
+- 2 **Red Flag or Follow-Up Questions**
+
+Format each section with these exact labels:
+- Technical Questions:
+- Behavioral Questions:
+- Red Flag / Follow-Up Questions:
+
+## SECTION 2: INSIGHT SUMMARY
+Write a 3-paragraph insight summary:
+1. How well does the resume match the JD?
+2. What are the candidate's strengths for this role?
+3. What skills or qualifications seem missing or weak?
+
+Start this section with: "===INSIGHT SUMMARY==="
+
+## SECTION 3: SKILL GAP HIGHLIGHTS
+Identify key skill gaps or mismatches between the job requirements and resume.
+List only CRITICAL missing skills as bullet points.
+
+Start this section with: "===SKILL GAPS==="
+
+⚠️ IMPORTANT: Generate ALL three sections in your response.
+"""
+def question_prompt(jd_text:str, resume_text:str) -> str:
+    return free_tier_prompt(jd_text, resume_text)
 
 def insight_summary_prompt(jd_text: str, resume_text: str) -> str:
     return f"""

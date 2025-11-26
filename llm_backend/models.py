@@ -28,3 +28,8 @@ class ResumeInput(BaseModel):
 
 class JDInput(BaseModel):
     jd: str
+
+class FeedbackInput(BaseModel):
+    score: str
+    text: Optional[str] = None
+    page: str

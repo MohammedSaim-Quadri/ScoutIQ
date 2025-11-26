@@ -21,6 +21,7 @@ fpdf2
 requests
 pandas
 python-multipart
+plotly
 
 # LLM Orchestration
 langchain
@@ -32,3 +33,5 @@ langchain-community
 voyageai
 
 streamlit-feedback
+
+slowapi

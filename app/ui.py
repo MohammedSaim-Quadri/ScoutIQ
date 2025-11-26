@@ -248,15 +248,19 @@ def run_ui():
                     for q in results['followup']:
                         st.markdown(f"{q}")
 
-                    if user_tier in ["monthly", "yearly", "lifetime"]:
-                        with st.spinner("Generating insight summary..."):
-                            summary = fetch_insight_summary(jd_input, resume_text, user_tier)
-                            st.subheader("Resume & JD Insight Summary")
-                            st.markdown(summary)
-                        with st.spinner("Analyzing skill gaps..."):
-                            skill_gaps = fetch_skill_gap_highlights(jd_input, resume_text, user_tier)
-                            st.subheader("Skill Gap Highlights")
-                            st.markdown(skill_gaps)
+                    # Check if Pro content exists in response
+                    if results.get("insight_summary"):
+                        st.markdown("---")
+                        st.subheader("📊 Resume & JD Insight Summary")
+                        st.markdown(results["insight_summary"])
+                    
+                    if results.get("skill_gaps"):
+                        st.subheader("⚡ Skill Gap Highlights")
+                        st.markdown(results["skill_gaps"])
+
+                    if user_tier == "free" and not results.get("insight_summary"):
+                        st.info("💎 Want deeper insights? Upgrade to Pro for AI-powered resume analysis!")
+                        st.markdown("[View Pricing →](https://saimquadri.gumroad.com/l/scoutiq-pro-monthly)")
             
                     # Download PDF
                     pdf_bytes = generate_pdf(results['technical'], results['behavioral'], results['followup'])
@@ -278,13 +282,14 @@ def run_ui():
                         "behavioral_qs": len(results['behavioral']),
                         "followup_qs": len(results['followup']),
                         "total_qs": len(results['technical']) + len(results['behavioral']) + len(results['followup']),
-                        "summary": summary,
-                        "skill_gaps": skill_gaps,
+                        "has_insights": results.get("insight_summary") is not None,
+                        "has_skill_gaps": results.get("skill_gaps") is not None,
                     }
 
                     db.collection("usage_logs").add(log_entry)
                 else:
                     st.error("Error generating questions. Please try again.")
-                    st.json(results)
+                    if results:
+                        st.json(results)
 
 

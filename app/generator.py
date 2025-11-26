@@ -13,13 +13,17 @@ BACKEND_URL = f"{BASE_BACKEND_URL}/generate"
 
 def run_prompt_chain(jd_text, resume_text):
     #prompt = question_prompt(jd_text, resume_text)
-    print("📨 Sending prompt to Llama...")
+    print("📨 Sending request..")
 
     try:
 
         if 'id_token' not in st.session_state:
             st.error("Authentication token not found. Please log in again")
-            return {"technical": [], "behavioral": [], "followup": []}
+            return {"technical": [],
+                    "behavioral": [],
+                    "followup": [],
+                    "insight_summary": None,
+                    "skill_gaps": None}
         id_token = st.session_state.id_token
         headers = {"Authorization": f"Bearer {id_token}"}
 
@@ -27,7 +31,7 @@ def run_prompt_chain(jd_text, resume_text):
             BACKEND_URL,
             json={"jd": jd_text, "resume": resume_text},
             headers=headers,
-            timeout=60
+            timeout=90
         )
 
         response.raise_for_status()
@@ -35,67 +39,49 @@ def run_prompt_chain(jd_text, resume_text):
         print("🧠 Raw backend response:\n", data)
         result = data.get("result", {})
 
+        tier = data.get("tier", "free")
+        
+        print(f"Response for {tier} tier")
+
         return {
             "technical": result.get("technical", []),
             "behavioral": result.get("behavioral", []),
-            "followup": result.get("followup", [])
+            "followup": result.get("followup", []),
+            "insight_summary": result.get("insight_summary"),
+            "skill_gaps": result.get("skill_gaps")
         }
 
-    except requests.exceptions.RequestException as e:
-        st.error("[LLM Backend Error] Could not generate questions.")
-        st.exception(e)
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 429:
+            st.error("⏱️ Rate limit reached. Please wait a moment and try again.")
+        else:
+            st.error(f"❌ Server error: {e.response.status_code}")
         return {
             "technical": [],
             "behavioral": [],
-            "followup": []
+            "followup": [],
+            "insight_summary": None,
+            "skill_gaps": None
         }
-
-def fetch_insight_summary(jd_text, resume_text, user_tier):
-    if user_tier not in ["monthly", "yearly", "lifetime"]:
-        return None
-
-    try:
-
-        if 'id_token' not in st.session_state:
-            st.error("Authentication token not found. Please log in again")
-            return {"technical": [], "behavioral": [], "followup": []}
-        id_token = st.session_state.id_token
-        headers = {"Authorization": f"Bearer {id_token}"}
-
-        response = requests.post(
-            f"{BASE_BACKEND_URL}/insight-summary",#"https://interview-scoutiq.onrender.com/insight-summary",
-            json={"jd": jd_text, "resume": resume_text},
-            headers=headers,
-            timeout=60
-        )
-        response.raise_for_status()
-        return response.json().get("summary", "⚠️ No summary returned.")
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Request timed out. Please try again.")
+        return {
+            "technical": [],
+            "behavioral": [],
+            "followup": [],
+            "insight_summary": None,
+            "skill_gaps": None
+        }
     except requests.exceptions.RequestException as e:
-        return f"⚠️ Failed to fetch insight summary: {str(e)}"
-
-
-def fetch_skill_gap_highlights(jd_text, resume_text, user_tier):
-    if user_tier not in ["monthly", "yearly", "lifetime"]:
-        return None
-    try:
-        if 'id_token' not in st.session_state:
-            st.error("Authentication token not found. Please log in again")
-            return {"technical": [], "behavioral": [], "followup": []}
-        id_token = st.session_state.id_token
-        headers = {"Authorization": f"Bearer {id_token}"}
-
-        response = requests.post(
-            f"{BASE_BACKEND_URL}/skill-gap",
-            json={"jd": jd_text, "resume": resume_text},
-            headers=headers,
-            timeout=60
-        )
-        response.raise_for_status()
-        return response.json().get("skill_gaps", "No gaps found.")
-    except requests.exceptions.RequestException as e:
-        st.error("❌ Error fetching skill gap highlights.")
-        st.exception(e)
-        return "N/A"
+        st.error("❌ Network error. Please check your connection.")
+        print(f"Request error: {e}")
+        return {
+            "technical": [],
+            "behavioral": [],
+            "followup": [],
+            "insight_summary": None,
+            "skill_gaps": None
+        }
 
 def extract_text_from_pdf(file) -> str:
     reader = PdfReader(file)
