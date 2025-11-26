@@ -84,9 +84,16 @@ async def lifespan(app: FastAPI):
         logger.info("Embedding model loaded.")
 
         logger.info("Connecting to Qdrant...")
+        qdrant_url = os.getenv("QDRANT_URL")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        
+        if not qdrant_url or not qdrant_api_key:
+            logger.warning("⚠️ QDRANT_URL or QDRANT_API_KEY not set. Resume search features will be disabled.")
+            raise ValueError("Qdrant credentials missing")
+        
         qdrant_client = QdrantClient(
-            url=os.getenv("QDRANT_URL"),
-            api_key=os.getenv("QDRANT_API_KEY"),
+            url=qdrant_url,
+            api_key=qdrant_api_key,
             timeout=60
         )
 
@@ -110,9 +117,10 @@ async def lifespan(app: FastAPI):
         dependencies.set_qdrant(qdrant_db)
         logger.info("Qdrant client initialized.")
     except Exception as e:
-        logger.error(f"Qdrant/Embeddings initialization failed: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"❌ Qdrant/Embeddings initialization failed: {e}")
+        logger.warning("⚠️ Resume parsing and candidate ranking features will be unavailable.")
+        # Don't crash - let the API start without Qdrant
+        dependencies.set_qdrant(None)
 
     logger.info("Startup complete. Server is ready.")
     yield

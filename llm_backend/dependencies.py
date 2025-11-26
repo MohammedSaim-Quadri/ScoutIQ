@@ -47,5 +47,5 @@ def get_llm():
 def get_qdrant():
     """Get Qdrant client dependency"""
     if _qdrant_db is None:
-        raise HTTPException(status_code=503, detail="Vector DB not initialized")
+        raise HTTPException(status_code=503, detail="Vector database not available. Resume parsing and candidate ranking features are currently disabled. Please contact support.")
     return _qdrant_db

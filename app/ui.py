@@ -4,7 +4,7 @@ from app.usage_tracker import get_today_usage, increment_today_usage
 from firebase_admin import credentials, firestore
 import streamlit as st
 import json
-from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf, fetch_insight_summary, fetch_skill_gap_highlights
+from app.generator import run_prompt_chain, extract_text_from_pdf, extract_text_from_docx, generate_pdf
 from io import BytesIO
 from datetime import datetime
 
