@@ -1,6 +1,9 @@
 # 🚀 ScoutIQ
 **AI-Powered Recruitment Intelligence Platform**
 
+**Note:**
+*🚧 Project Status: MVP Prototype. Core architecture (FastAPI, Qdrant, Llama-3) is implemented. Currently optimizing deployment configurations for the live demo.*
+
 ScoutIQ is a production-ready SaaS platform that helps **recruiters, founders, and job seekers** generate high-quality, role-specific interview questions, analyze resumes against job descriptions, and rank candidates using AI-powered semantic search.  
 
 Built with **Python, FastAPI, Streamlit, Firebase, Groq LLMs, and Qdrant vector database**, ScoutIQ delivers fast, cost-efficient, and intelligent hiring solutions.
