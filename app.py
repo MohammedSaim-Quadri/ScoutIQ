@@ -6,7 +6,7 @@ import requests
 from streamlit_feedback import streamlit_feedback
 
 st.set_page_config(page_title="ScoutIQ - AI Interview Questions", layout="centered")
-BASE_BACKEND_URL = os.getenv("BACKEND_URL", "[http://127.0.0.1:8000](http://127.0.0.1:8000)")
+BASE_BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 
 def login_page():
     """

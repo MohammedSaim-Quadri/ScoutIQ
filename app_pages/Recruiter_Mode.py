@@ -4,7 +4,7 @@ from app.ui import run_ui
 from streamlit_feedback import streamlit_feedback
 import requests, os
 
-BASE_BACKEND_URL = os.getenv("BACKEND_URL", "[http://127.0.0.1:8000](http://127.0.0.1:8000)")
+BASE_BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 
 # The login check is now handled by the main app.py router.
 # If we are here, the user is already logged in.

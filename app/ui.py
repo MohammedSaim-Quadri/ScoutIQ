@@ -187,7 +187,7 @@ def run_ui():
             else:
                 # If user is "free", show a disabled button and an upsell link
                 st.button("Parse & Save Resumes to Database", disabled=True)
-                st.page_link("pages/Pricing.py", label="💎 Upgrade to Pro to save resumes to your database.", icon="💎")
+                st.page_link("app_pages/Pricing.py", label="💎 Upgrade to Pro to save resumes to your database.", icon="💎")
 
     if not resume_files:
         resume_text = st.text_area("Or Paste Resume Text below", height=200)
@@ -220,7 +220,7 @@ def run_ui():
         st.error("🚫 You’ve hit your free tier limit of 3 generations today.")
         st.markdown(
             "**💎 Upgrade to Pro for unlimited access →** "
-            "[View Pricing](pages/Pricing.py)", unsafe_allow_html=True
+            "[View Pricing](app_pages/Pricing.py)", unsafe_allow_html=True
         )
         st.stop()
 
